@@ -1,6 +1,6 @@
 {
   "name": "dsh-codex-bridge",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "A DeepSeek Harness plugin that routes text to a base model and images to a configured vision model.",
   "type": "module",
   "main": "lib/index.js",

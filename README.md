@@ -1,6 +1,6 @@
 # DSH Codex Bridge
 
-![Version](https://img.shields.io/badge/version-0.1.0-4c7dff)
+![Version](https://img.shields.io/badge/version-0.1.1-4c7dff)
 ![License](https://img.shields.io/badge/license-MIT-22a06b)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-plugin-6f5cff)
 
@@ -45,7 +45,7 @@
 
 ```powershell
 cd E:\git\deepseek-harness
-pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.0/dsh-codex-bridge-0.1.0.tgz
+pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.1/dsh-codex-bridge-0.1.1.tgz
 ```
 
 安装命令会把插件依赖和 bundle 写入 Web profile。之后直接启动：
