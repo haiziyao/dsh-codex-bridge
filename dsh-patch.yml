@@ -1,0 +1,5 @@
+# 在 DeepSeek Harness 根目录已链接 dsh-codex-bridge 时使用此 overlay。
+# 启动：pnpm dsh web --patch ../dsh-codex-bridge/dsh-patch.yml
+- insert:
+    - id: dsh-codex-bridge
+      name: dsh-codex-bridge

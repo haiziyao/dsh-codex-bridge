@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="600" viewBox="0 0 1200 600" role="img" aria-labelledby="title desc">
+  <title id="title">Session vision history preview</title>
+  <desc id="desc">Compact collapsed vision history cards and one expanded record with prompt, image preview, and result.</desc>
+  <rect width="1200" height="600" rx="28" fill="#17181b"/>
+  <rect x="24" y="24" width="1152" height="552" rx="20" fill="#222328" stroke="#383a40"/>
+  <g transform="translate(52 50)" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M0 18h23M2 18v-5M21 18v-5M2 13h19M5 13c0-6 3-10 8-10s8 4 8 10M7 13V6M16 13V6M0 22h23"/></g>
+  <text x="88" y="72" fill="#f5f6f8" font-family="Segoe UI, sans-serif" font-size="24" font-weight="700">识图记录</text>
+  <text x="52" y="105" fill="#8f939d" font-family="Segoe UI, sans-serif" font-size="15">仅显示当前会话，按调用时间排列</text>
+  <text x="52" y="149" fill="#b9bcc4" font-family="Segoe UI, sans-serif" font-size="16" font-weight="650">2026年8月15日</text>
+  <rect x="52" y="170" width="1096" height="88" rx="13" fill="#292a2f" stroke="#44464d"/>
+  <text x="72" y="201" fill="#f2f3f5" font-family="Segoe UI, sans-serif" font-size="17" font-weight="650">页面错误分析</text>
+  <text x="1038" y="201" fill="#92969f" font-family="Segoe UI, sans-serif" font-size="14">16:59:24</text>
+  <text x="72" y="228" fill="#aeb1b9" font-family="Segoe UI, sans-serif" font-size="14">codex-local/gpt-5.6-sol · 9221ms</text>
+  <text x="72" y="248" fill="#8f939d" font-family="Segoe UI, sans-serif" font-size="14">发现页面右上角模型配置为空，提交按钮处于禁用状态……</text>
+  <rect x="52" y="278" width="1096" height="258" rx="13" fill="#292a2f" stroke="#4b4d55"/>
+  <rect x="52" y="278" width="1096" height="78" rx="13" fill="#303137"/>
+  <text x="72" y="310" fill="#f2f3f5" font-family="Segoe UI, sans-serif" font-size="17" font-weight="650">人物识别</text>
+  <text x="1038" y="310" fill="#92969f" font-family="Segoe UI, sans-serif" font-size="14">16:58:54</text>
+  <text x="72" y="338" fill="#aeb1b9" font-family="Segoe UI, sans-serif" font-size="14">codex-local/gpt-5.6-sol · 7719ms</text>
+  <text x="72" y="389" fill="#cfd2d8" font-family="Segoe UI, sans-serif" font-size="15" font-weight="650">输入提示词</text>
+  <rect x="72" y="404" width="560" height="104" rx="10" fill="#202126"/>
+  <text x="90" y="432" fill="#aeb1ba" font-family="Consolas, monospace" font-size="13">Inspect the actual pixels before answering.</text>
+  <text x="90" y="456" fill="#aeb1ba" font-family="Consolas, monospace" font-size="13">Compare hair, clothing, accessories and art style.</text>
+  <text x="90" y="480" fill="#e0e2e6" font-family="Consolas, monospace" font-size="13">Request: 这个人物是谁？</text>
+  <rect x="654" y="380" width="170" height="128" rx="12" fill="#f1e6df"/>
+  <circle cx="739" cy="424" r="32" fill="#f1c8b8"/>
+  <path d="M704 420c5-40 66-42 70 2-18-18-48-23-70-2z" fill="#202126"/>
+  <circle cx="727" cy="429" r="5" fill="#31343a"/><circle cx="751" cy="429" r="5" fill="#31343a"/>
+  <path d="M724 447q15 12 30 0" fill="none" stroke="#a86767" stroke-width="3"/>
+  <text x="852" y="393" fill="#cfd2d8" font-family="Segoe UI, sans-serif" font-size="15" font-weight="650">解析结果</text>
+  <text x="852" y="424" fill="#e5e6e9" font-family="Segoe UI, sans-serif" font-size="15">最可能是目标作品中的主要角色。</text>
+  <text x="852" y="451" fill="#aeb1b9" font-family="Segoe UI, sans-serif" font-size="14">依据：发型、制服、配饰与画风特征。</text>
+  <text x="852" y="478" fill="#aeb1b9" font-family="Segoe UI, sans-serif" font-size="14">识别结果会继续交给基础模型回答。</text>
+</svg>
