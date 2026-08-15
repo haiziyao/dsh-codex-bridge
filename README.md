@@ -4,186 +4,183 @@
 ![License](https://img.shields.io/badge/license-MIT-22a06b)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-plugin-6f5cff)
 
-`dsh-codex-bridge` 是一个符合 DeepSeek Harness / Cordis 插件格式的多模型桥接插件。它注册固定虚拟模型 `Mix`，将普通文本交给基础模型，将用户图片、Agent 截图和工具返回图片交给已配置的视觉模型，再把结构化识图结果交回基础模型继续推理。
+让不支持图片输入的基础模型通过视觉模型看图，并继续完成对话、推理和工具调用。
 
-插件不保存 API Key、Base URL 或协议配置。模型及密钥继续由 Web 的“设置 → 模型”统一管理。
+这个项目中的三个名称分别表示：
+
+- `dsh-codex-bridge`：安装使用的 npm 包名。
+- `Bridge GPT`：Web 设置中的插件名称。
+- `Mix`：插件注册到模型选择器中的固定模型名称。
+
+模型的 API 地址、协议和密钥仍由 DeepSeek Harness 的“设置 → 模型”统一管理。Bridge GPT 只引用已经配置好的模型，不重复保存凭据。
 
 ## 界面预览
 
+在 Bridge GPT 设置中选择基础模型、图片模型和可选的意图识别模型：
+
 ![Bridge GPT 设置页面](docs/settings-preview.svg)
 
-识图记录按会话隔离并按时间排列。每条记录默认折叠，只显示标题、模型、耗时和结果摘要；点击后显示完整提示词、图片及解析结果。
+搭配可选的 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 后，可以在当前会话中查看每一次识图调用。记录默认折叠，展开后显示完整提示词、图片预览和分析结果：
 
 ![会话级识图记录](docs/history-preview.svg)
 
-## 路由行为
+## 功能
 
-| 输入 | 路由 |
+- 用户上传图片时，先显示原始消息，再调用图片模型分析。
+- 基础模型读取识图结果后继续回复，不要求基础模型本身支持图片输入。
+- 支持“这张图里还有什么”“再详细一点”等跨轮图片追问。
+- 支持分析 Agent 截图以及浏览器、读图工具返回的图片。
+- 每一次图片模型调用都生成独立的会话级记录。
+- 普通文本不会重复分析历史图片。
+- 图片附件保留稳定引用，后续需要时可以在当前会话中重新读取像素。
+- 图片后端通过统一接口接入，以后可以扩展非 LLM 类型的识图 API。
+
+## 真实对比：根据设计稿开发网页
+
+我们在 DSH Web 中让 `DeepSeek-V4-Pro` 和 `Mix` 接收完全相同的提示词与同一张 1440×900 设计稿。两组都使用“标准模式”和 `Workspace Write`，不追加人工提示。
+
+| DeepSeek-V4-Pro | Mix（基础模型仍为 DeepSeek-V4-Pro） |
 |---|---|
-| 与图片无关的纯文本消息 | `Mix` 直接调用基础模型，不调用视觉模型或意图模型 |
-| 用户上传图片 | 用户消息立即显示；视觉模型分析图片后，基础模型读取持久化的文字分析上下文再回复 |
-| 后续追问最近图片 | 明确图片指代直接重新识图；模糊追问由可选意图模型判断，再用当前问题查看最近图片 |
-| Agent 截图或工具返回图片 | 工具完成后分析真实的 `image` content block，再把结果追加到下一步上下文 |
-| 工具没有返回图片 | 原样继续，不触发视觉模型或意图模型 |
+| 在提交阶段提示“当前模型不支持图片”，Agent 未启动，生成 0 个文件 | 读取设计稿后生成 `index.html`、`styles.css`、`app.js`，并自行截图复查 |
 
-每个 agent step 只检查该 step 原始输入中的新图片，不扫描下游重新组装的历史消息。普通下一轮和工具续步不会重复生成识图记录；只有用户明确或经意图模型判断继续询问最近图片时，才会用新问题重新分析一次。同一张图片被用户明确重新发送时也视为一次新的调用。
+| 参考设计稿 | Mix 单轮生成结果 |
+|---|---|
+| ![LumaBoard 参考设计稿](docs/benchmark-reference.png) | ![Mix 生成的 LumaBoard 页面](docs/benchmark-mix.png) |
 
-视觉预处理提示词会要求模型检查实际像素：人物和虚构角色会比较发型、服装、配饰、画风与可能出处；界面截图会提取文字、布局、控件状态和错误区域。发送给视觉模型的完整提示词也会记录在侧边栏中。
+Mix 用时 8分37秒、共 11 个 Agent 步骤；Bridge GPT 完成 1 次初始分析、3 次针对布局/配色/排版的附件追问，以及 2 次成品截图复查。我们随后独立打开产物验证：1440×900 下没有页面滚动，没有控制台错误或页面异常。
 
-完整设计见 [DESIGN.md](DESIGN.md)。
+这个结果说明的不是“Mix 的基础模型比 DeepSeek 更强”，而是同一个 DeepSeek 基础模型经过 Bridge GPT 后，获得了读取设计稿、按需重新查看像素并完成视觉自检的能力。完整提示词、原始失败截图、测试条件、资源消耗和生成源码见 [BENCHMARK.md](BENCHMARK.md)。
 
-## 图片上传与定位
+## 快速开始
 
-Web 输入框中的图片在发送前只是浏览器临时文件；发送时由 Harness 写入私有的内容寻址附件存储，并在 `user/message` 中记录结构化 `image` block：
+### 1. 安装插件
 
-```json
-{
-  "type": "image",
-  "attachment": {
-    "attachmentId": "sha256:…",
-    "mediaType": "image/png",
-    "bytes": 123456,
-    "width": 1920,
-    "height": 1080,
-    "name": "minecraft.png"
-  }
-}
-```
-
-Bridge GPT 会把这个引用转成模型可读的逻辑定位符 `dsh-attachment://sha256%3A…`，并在图片消息的文本映射、识图分析上下文和侧边栏详情中记录 attachment id、原文件名、格式、尺寸与大小。侧边栏还显示当前会话授权的 `/bridge-gpt/image/<callId>?sessionId=…` 预览地址。
-
-逻辑定位符不是工作区文件路径。默认本地存储实现把对象放在 `<DSH_HOME>/attachments/v1/objects/<前两位>/<sha256>`，但宿主物理路径不会写入会话：它属于私有实现，换机器、远程附件后端或迁移 `DSH_HOME` 后可能变化。基础模型会收到“不要搜索工作区”的明确提示；需要再次查看像素时，可以由路由自动重分析最近图片，也可以调用 `bridge_gpt_attachment_query`，用当前会话中的 `attachment_id` 重新打开附件。
-
-## 侧边栏是可选依赖
-
-`dsh-better-sidebar` 不是插件启动的必要条件：
-
-- 已安装时：注册桥形图标的“识图记录”标签。
-- 未安装时：不显示侧边栏标签，但 `Mix` 路由、Bridge GPT 设置、图片分析、HTTP 接口及会话记录持久化保持可用。
-- 侧边栏稍后加载时：插件通过 Cordis 可选注入自动注册标签，不依赖固定加载顺序。
-
-## 安装
-
-要求 Node.js `^22.19.0` 或 `>=24.0.0`，并使用 pnpm。
-
-推荐直接从 npm 安装已经构建好的正式包：
+在 DeepSeek Harness 仓库目录执行：
 
 ```powershell
-cd E:\git\deepseek-harness
 pnpm dsh plugin --profile web add dsh-codex-bridge
 ```
 
-推荐同时安装 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)，用于显示按会话隔离的识图记录、图片预览、完整提示词和分析结果：
+如果需要侧边栏识图记录，再安装：
 
 ```powershell
 pnpm dsh plugin --profile web add dsh-better-sidebar
 ```
 
-安装命令会把插件依赖和 bundle 写入 Web profile。之后直接启动：
+侧边栏插件不是必需依赖。未安装时，`Mix` 路由、图片分析、跨轮追问和记录持久化仍然正常工作，只是不显示侧边栏入口。
+
+### 2. 启动 Web
 
 ```powershell
 pnpm dsh web
 ```
 
-无需使用 `--patch`，也无需在插件中重复配置模型密钥。npm 包页面为 [dsh-codex-bridge](https://www.npmjs.com/package/dsh-codex-bridge)。
+安装后的正常启动不需要 `--patch`。
 
-如果所用 npm 镜像尚未同步最新版本，可以只为当前终端临时改用 npm 官方 registry：
+### 3. 配置模型
+
+先打开“设置 → 模型”，配置准备使用的模型及其 provider、协议、Base URL 和凭据。
+
+然后打开“设置 → Bridge GPT”：
+
+1. 选择负责最终回复和工具调用的基础模型。
+2. 选择负责读取图片像素的图片模型。该模型必须声明支持 `image` 输入。
+3. 根据需要选择意图识别模型，并决定是否自动分析工具返回的图片。
+
+这里显示的都是“设置 → 模型”中已经配置好的模型，不需要再次填写 API Key。
+
+### 4. 使用 Mix
+
+在新对话的模型选择器中选择 `Mix`，然后发送文本或图片。`Mix` 是固定路由入口，不是一个单独的模型服务。
+
+## Mix 如何处理消息
+
+| 当前输入 | 处理方式 |
+|---|---|
+| 普通文本 | 直接交给基础模型，不调用图片模型或意图模型 |
+| 新上传的图片 | 图片模型读取图片，基础模型根据识图结果回答 |
+| 明确追问最近图片 | 使用当前问题重新查看本会话最近的图片 |
+| “再详细一点”等模糊追问 | 配置了意图模型时，先判断是否需要重新查看图片 |
+| Agent 截图或工具返回图片 | 分析工具真正返回的图片，再把结果交给下一步 Agent |
+| 工具没有返回图片 | 保持原有工具结果，不触发识图 |
+
+插件只处理当前步骤中新进入的图片，不会扫描整段历史并重复调用图片模型。同一张图片被用户再次发送，或者用户继续追问图片内容时，会产生一次新的识图调用和一条新的记录。
+
+更完整的路由和生命周期说明见 [DESIGN.md](DESIGN.md)。
+
+## 配置项
+
+| 设置 | 是否必需 | 用途 |
+|---|---:|---|
+| 基础模型 | 是 | 处理普通文本，读取识图结果并生成最终回复 |
+| 图片模型 | 是 | 读取用户图片、Agent 截图和工具图片的实际像素 |
+| 意图识别模型 | 否 | 判断模糊的后续追问是否仍在讨论最近图片 |
+| 自动分析工具图片 | 否 | 控制是否自动处理截图工具等返回的图片，默认开启 |
+
+如果没有配置意图识别模型，明确写出“图片”“截图”“照片”等指代的追问仍然可以重新识图；模糊追问则直接交给基础模型。
+
+## 识图记录
+
+安装 `dsh-better-sidebar` 后，Bridge GPT 会自动注册桥形图标的“识图记录”标签。侧边栏只显示当前会话的数据，并按日期和时间排列。
+
+每条记录包括：
+
+- 调用来源和时间。
+- 图片模型与耗时。
+- 发送给图片模型的完整提示词。
+- 图片预览、原文件名、格式、尺寸和大小。
+- 图片附件的逻辑定位符。
+- 完整分析结果或错误信息。
+
+未安装侧边栏，或者侧边栏晚于 Bridge GPT 加载，都不会影响插件的核心功能。
+
+## 图片附件与隐私
+
+- 插件不包含或持久化硬编码 API Key。
+- 模型请求统一经过 Harness 的模型注册表和凭据系统。
+- 用户图片由 Harness attachment 服务保存；会话记录稳定的 attachment id，而不是宿主机器上的绝对文件路径。
+- 图片在模型上下文中带有 `dsh-attachment://` 逻辑定位符，基础模型不会被引导到工作区中搜索上传图片。
+- `bridge_gpt_attachment_query` 只能重新读取当前会话识图记录中已经出现过的附件。
+- 图片预览同时校验会话和识图记录，其他会话不能直接枚举附件。
+- 识图历史默认保存在 `$DSH_HOME/bridge-gpt/v1/calls/`。
+
+附件存储和会话事件的实现细节见 [DESIGN.md](DESIGN.md#附件定位)。
+
+## 常见问题
+
+### 安装后看不到 Mix
+
+确认插件已经安装到正在使用的 `web` profile，并重新启动 `pnpm dsh web`。模型选择器中显示的是 `Mix`，不是 npm 包名或 `Bridge GPT`。
+
+### 图片模型没有出现在 Bridge GPT 的列表中
+
+先在“设置 → 模型”中完成该模型的配置，并确认它声明支持 `image` 输入。纯文本模型不会出现在图片模型列表中。
+
+### 没安装 dsh-better-sidebar 能否使用
+
+可以。缺少的只有“识图记录”侧边栏入口，图片路由和会话数据不受影响。
+
+### 后续追问会不会再次读取图片
+
+明确引用图片时会。模糊追问需要配置意图识别模型。与图片无关的普通文本不会重复读取历史图片。
+
+### 启动时报 `EADDRINUSE 127.0.0.1:3080`
+
+端口 `3080` 已经有一份 Web 服务在运行。关闭旧进程后重新启动，不要同时运行两份 Web 服务。
+
+### npm 镜像没有同步最新版本
+
+可以只在当前 PowerShell 终端临时使用 npm 官方 registry：
 
 ```powershell
-$env:npm_config_registry='https://registry.npmjs.org/'
+$env:npm_config_registry = 'https://registry.npmjs.org/'
 pnpm dsh plugin --profile web add dsh-codex-bridge
 Remove-Item Env:npm_config_registry
 ```
 
-从本地 checkout 安装时，在 Harness 根目录执行：
+## 开发
 
-```powershell
-pnpm dsh plugin --profile web add ../dsh-codex-bridge
-```
-
-也可以直接从 GitHub 源码安装：
-
-```powershell
-pnpm dsh plugin --profile web add github:haiziyao/dsh-codex-bridge
-```
-
-Git 源安装会通过 `prepare` 脚本生成服务端和 Web 客户端 bundle。按照 DSH 和 pnpm 10 及以上的安全策略，第一次命令会停止并打印一条完整的 `allowBuilds` 键。把该键原样加入 `%USERPROFILE%\.dsh\profiles\web\pnpm-workspace.yaml` 后重新执行同一命令：
-
-```yaml
-allowBuilds:
-  'dsh-codex-bridge@https://codeload.github.com/...': true
-```
-
-必须使用 pnpm 错误中给出的完整 URL 和 commit 键，不能照抄上面的省略示例。通过 DSH Market 安装时，市场界面会负责这一步显式授权。
-
-如果 profile 已启用 `dsh-better-sidebar`，Bridge GPT 会自动添加“识图记录”标签；未启用时无需额外操作。
-
-## 配置模型
-
-先在 Web 的“设置 → 模型”中配置基础模型和视觉模型，包括 provider、协议、Base URL 与凭据。视觉模型必须声明支持 `image` 输入。
-
-首次加载时的默认路由是：
-
-```yaml
-baseModel:
-  provider: deepseek-official
-  model: deepseek-v4-pro
-imageModel:
-  provider: codex-local
-  model: gpt-5.6-sol
-autoAnalyzeToolImages: true
-```
-
-插件 bundle 不会把这些模型写入用户 profile。如果你的模型 id 不同，在“设置 → Bridge GPT”从全局已配置模型中选择基础模型、图片模型和可选意图识别模型，不需要再次填写密钥。建议配置意图识别模型：它能判断“再详细一点”“它还有什么特征”等模糊追问是否需要重新查看本会话最近一张图片；未配置时，明确提到图片、截图或照片的追问仍会重新识图。
-
-## 本地开发启动
-
-无需安装到 profile 时，可以通过仓库内的开发 patch 启动：
-
-```powershell
-cd E:\git\deepseek-harness
-pnpm dsh web --patch ../dsh-codex-bridge/dsh-patch.yml
-```
-
-打开 <http://127.0.0.1:3080>，在模型选择器中选择固定模型 `Mix`。
-
-如果出现 `EADDRINUSE 127.0.0.1:3080`，说明已有一份 Web 服务正在运行。关闭旧进程后重新执行同一条命令，不要同时启动两份服务。
-
-## 数据与安全
-
-- 插件不包含硬编码 API Key。
-- 模型请求通过 Harness 的模型注册表和凭据系统发送。
-- 识图历史保存在 `$DSH_HOME/bridge-gpt/v1/calls/`。
-- 用户上传图片保存在 Harness attachment 服务中；会话和识图记录只保留稳定 attachment 引用，不泄露宿主绝对路径。
-- 图片预览同时校验 `sessionId` 和该会话的 `callId`。
-- 记录只在当前会话的侧边栏中查询和显示。
-
-## 开发验证
-
-```powershell
-pnpm run typecheck
-pnpm run test
-pnpm run build
-```
-
-`pnpm run check` 会依次执行全部三项。
-
-## 发布
-
-仓库使用 npm Trusted Publishing，不保存 `NPM_TOKEN`。`.github/workflows/publish.yml` 会在推送 `v*` 标签时通过 GitHub OIDC 获取一次性发布凭据，安装锁定依赖，确认标签与 `package.json` 版本一致，运行完整检查后发布到 npm。npm 会自动为该版本生成来源证明。
-
-发布新版本时先更新 `package.json` 和 `pnpm-lock.yaml` 中的版本并提交，再推送完全匹配的标签：
-
-```powershell
-pnpm version patch --no-git-tag-version
-$version = (Get-Content package.json | ConvertFrom-Json).version
-git add package.json pnpm-lock.yaml
-git commit -m "chore: release v$version"
-git tag "v$version"
-git push origin main "v$version"
-```
-
-标签必须与 `package.json` 中的版本完全对应。发布工作流无需 npm Token；npm 包的 Trusted Publisher 必须绑定 GitHub 仓库 `haiziyao/dsh-codex-bridge`、工作流文件 `publish.yml`，并允许 `npm publish`。
+源码安装、本地调试、检查命令和发布流程见 [DEVELOPMENT.md](DEVELOPMENT.md)。
 
 ## License
 

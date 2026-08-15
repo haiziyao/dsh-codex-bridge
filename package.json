@@ -23,7 +23,12 @@
     "lib/client.js.map",
     "lib/types/**/*.d.ts",
     "cordis.patch.yml",
-    "docs/*.svg",
+    "docs/*",
+    "benchmark/PROMPT.md",
+    "benchmark/reference.html",
+    "benchmark/result/mix/*",
+    "BENCHMARK.md",
+    "DEVELOPMENT.md",
     "DESIGN.md",
     "README.md",
     "LICENSE"

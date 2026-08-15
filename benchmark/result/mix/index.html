@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LumaBoard — Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ===================== Sidebar ===================== -->
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-logo">L</div>
+      <span class="brand-name">LumaBoard</span>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Workspace</div>
+      <nav class="nav-list">
+        <a href="#" class="nav-item active">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Overview</span>
+        </a>
+        <a href="#" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+          <span>Analytics</span>
+        </a>
+        <a href="#" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          <span>Customers</span>
+        </a>
+        <a href="#" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L22 12 L12 22 L2 12 Z"/></svg>
+          <span>Products</span>
+        </a>
+        <a href="#" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          <span>Messages</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-label">Account</div>
+      <nav class="nav-list">
+        <a href="#" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+          <span>Settings</span>
+        </a>
+        <a href="#" class="nav-item">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          <span>Help center</span>
+        </a>
+      </nav>
+    </div>
+
+    <div class="upgrade-card">
+      <div class="upgrade-title">Unlock more insights</div>
+      <p class="upgrade-text">Upgrade your plan to access complete analytics.</p>
+      <button class="btn btn-upgrade" type="button">Upgrade plan</button>
+    </div>
+  </aside>
+
+  <!-- ===================== Main ===================== -->
+  <main class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1>Good morning, Alex</h1>
+        <p class="subtitle">Here is what is happening with your store today.</p>
+      </div>
+      <div class="topbar-right">
+        <div class="search">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" placeholder="Search anything" aria-label="Search" />
+        </div>
+        <div class="avatar">AK</div>
+      </div>
+    </header>
+
+    <!-- KPI cards -->
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Total revenue</span>
+        <div class="kpi-icon"><span class="kpi-glyph">$</span></div>
+        <span class="kpi-value">$24,780</span>
+        <span class="kpi-trend up">↑ 12.5% this month</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">New orders</span>
+        <div class="kpi-icon">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        </div>
+        <span class="kpi-value">1,429</span>
+        <span class="kpi-trend up">↑ 8.2% this month</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Active customers</span>
+        <div class="kpi-icon">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <span class="kpi-value">892</span>
+        <span class="kpi-trend up">↑ 4.1% this month</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Conversion rate</span>
+        <div class="kpi-icon">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>
+        </div>
+        <span class="kpi-value">3.86%</span>
+        <span class="kpi-trend muted">0.3% from last month</span>
+      </div>
+    </section>
+
+    <!-- Middle row -->
+    <section class="middle-grid">
+      <div class="panel revenue-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Revenue overview</h2>
+            <p class="panel-sub">Income compared with last month</p>
+          </div>
+          <div class="dropdown" id="rangeDropdown">
+            <button class="dropdown-btn" type="button">
+              <span class="dropdown-label">Last 7 days</span>
+              <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            <ul class="dropdown-menu">
+              <li class="selected">Last 7 days</li>
+              <li>Last 30 days</li>
+              <li>Last 90 days</li>
+              <li>This year</li>
+            </ul>
+          </div>
+        </div>
+        <div class="chart" id="revenueChart" role="img" aria-label="Revenue overview bar chart"></div>
+      </div>
+
+      <div class="panel orders-panel">
+        <div class="panel-head">
+          <div>
+            <h2>Recent orders</h2>
+            <p class="panel-sub">Latest customer purchases</p>
+          </div>
+          <a href="#" class="view-all">View all</a>
+        </div>
+        <ul class="orders">
+          <li class="order">
+            <div class="order-avatar av-blue">JM</div>
+            <div class="order-info">
+              <span class="order-name">James Miller</span>
+              <span class="order-meta">#ORD-7421 · 2 min ago</span>
+            </div>
+            <span class="order-amount">$124</span>
+          </li>
+          <li class="order">
+            <div class="order-avatar av-orange">SL</div>
+            <div class="order-info">
+              <span class="order-name">Sophia Lee</span>
+              <span class="order-meta">#ORD-7420 · 18 min ago</span>
+            </div>
+            <span class="order-amount">$86</span>
+          </li>
+          <li class="order">
+            <div class="order-avatar av-teal">NO</div>
+            <div class="order-info">
+              <span class="order-name">Noah Owen</span>
+              <span class="order-meta">#ORD-7419 · 42 min ago</span>
+            </div>
+            <span class="order-amount">$212</span>
+          </li>
+          <li class="order">
+            <div class="order-avatar av-pink">EM</div>
+            <div class="order-info">
+              <span class="order-name">Emma Martin</span>
+              <span class="order-meta">#ORD-7418 · 1 hr ago</span>
+            </div>
+            <span class="order-amount">$64</span>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- Bottom row -->
+    <section class="bottom-grid">
+      <div class="panel target-panel">
+        <div class="target-info">
+          <span class="target-label">Monthly target</span>
+          <span class="target-value">$37,200 / $50,000</span>
+          <span class="target-status">You are ahead of schedule</span>
+        </div>
+        <div class="donut" id="targetDonut" role="img" aria-label="Monthly target progress 74%"></div>
+      </div>
+
+      <div class="campaign-card">
+        <h2>Plan your next campaign</h2>
+        <p>Use customer insights to build a campaign that reaches the right audience.</p>
+        <button class="btn btn-campaign" type="button">Create campaign</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="app.js"></script>
+</body>
+</html>

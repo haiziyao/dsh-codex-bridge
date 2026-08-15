@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LumaBoard Reference</title>
+  <style>
+    * { box-sizing: border-box; }
+    :root {
+      color: #182033;
+      font-family: Inter, "Segoe UI", sans-serif;
+      background: #f4f6fb;
+    }
+    body { margin: 0; min-width: 1100px; min-height: 100vh; background: #f4f6fb; }
+    .app { display: grid; grid-template-columns: 228px 1fr; min-height: 100vh; }
+    aside { position: relative; padding: 30px 22px; overflow: hidden; color: white; background: #17162d; }
+    aside::after { content: ""; position: absolute; right: -95px; bottom: -100px; width: 230px; height: 230px; border-radius: 50%; background: #645cff; opacity: .28; filter: blur(2px); }
+    .brand { display: flex; align-items: center; gap: 11px; margin: 0 10px 38px; font-size: 21px; font-weight: 750; letter-spacing: -.3px; }
+    .logo { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; background: linear-gradient(135deg, #8e7cff, #5d54ec); box-shadow: 0 9px 24px #6258ff55; }
+    .logo::before { content: "L"; font-size: 17px; font-weight: 900; }
+    .nav-label { margin: 0 12px 12px; color: #77758f; font-size: 11px; font-weight: 800; letter-spacing: 1.4px; }
+    nav { display: grid; gap: 7px; }
+    .nav-item { display: flex; align-items: center; gap: 13px; height: 46px; padding: 0 14px; border-radius: 12px; color: #a9a7bd; font-size: 14px; font-weight: 600; }
+    .nav-item.active { color: white; background: #6258e8; box-shadow: 0 9px 24px #6258e833; }
+    .nav-icon { width: 18px; text-align: center; font-size: 16px; }
+    .upgrade { position: absolute; z-index: 1; right: 20px; bottom: 25px; left: 20px; padding: 18px; border: 1px solid #34324c; border-radius: 16px; background: #211f39; }
+    .upgrade strong { display: block; margin-bottom: 7px; font-size: 13px; }
+    .upgrade span { color: #9290a8; font-size: 11px; line-height: 1.5; }
+    .upgrade button { width: 100%; margin-top: 14px; padding: 10px; border: 0; border-radius: 9px; color: white; font-weight: 700; background: #6258e8; }
+    main { padding: 34px 42px 40px; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 28px; }
+    h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -.7px; }
+    .subtitle { margin: 0; color: #8990a3; font-size: 14px; }
+    .header-actions { display: flex; align-items: center; gap: 12px; }
+    .search { width: 235px; padding: 12px 15px; border: 1px solid #e1e5ef; border-radius: 12px; color: #9aa0b0; background: white; box-shadow: 0 5px 18px #2c35500a; }
+    .avatar { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; color: white; font-weight: 800; background: linear-gradient(145deg, #ff9b81, #f16d88); }
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 17px; }
+    .card { border: 1px solid #e9ebf3; border-radius: 18px; background: white; box-shadow: 0 12px 30px rgba(38, 48, 73, .045); }
+    .stat { min-height: 134px; padding: 21px; }
+    .stat-top { display: flex; align-items: center; justify-content: space-between; }
+    .stat-label { color: #858c9e; font-size: 12px; font-weight: 650; }
+    .stat-icon { display: grid; place-items: center; width: 35px; height: 35px; border-radius: 11px; color: #645ae8; background: #eeeefe; }
+    .stat strong { display: block; margin: 15px 0 7px; font-size: 25px; letter-spacing: -.4px; }
+    .trend { color: #26a879; font-size: 11px; font-weight: 700; }
+    .trend.neutral { color: #9aa0af; }
+    .content { display: grid; grid-template-columns: minmax(560px, 1.55fr) minmax(290px, .75fr); gap: 19px; margin-top: 19px; }
+    .chart-card { padding: 23px 25px 20px; }
+    .section-head { display: flex; align-items: flex-start; justify-content: space-between; }
+    h2 { margin: 0 0 5px; font-size: 16px; }
+    .section-note { color: #9ba1b0; font-size: 11px; }
+    .select { padding: 8px 11px; border: 1px solid #e5e7ef; border-radius: 9px; color: #707789; font-size: 11px; background: #fafbfe; }
+    .chart { position: relative; height: 246px; margin-top: 25px; padding: 4px 5px 27px 41px; }
+    .grid-line { position: absolute; right: 3px; left: 40px; height: 1px; background: #edf0f6; }
+    .grid-line:nth-child(1) { top: 8px; }
+    .grid-line:nth-child(2) { top: 60px; }
+    .grid-line:nth-child(3) { top: 112px; }
+    .grid-line:nth-child(4) { top: 164px; }
+    .grid-line:nth-child(5) { top: 216px; }
+    .bars { position: relative; z-index: 1; display: flex; align-items: flex-end; justify-content: space-around; height: 216px; }
+    .bar-wrap { display: flex; align-items: flex-end; gap: 5px; height: 100%; }
+    .bar { width: 11px; border-radius: 7px 7px 2px 2px; background: #675ce9; }
+    .bar.pale { background: #dddafe; }
+    .days { position: absolute; right: 7px; bottom: 0; left: 42px; display: flex; justify-content: space-around; color: #9ba0af; font-size: 10px; }
+    .activity { padding: 23px 23px 11px; }
+    .activity-list { display: grid; gap: 2px; margin-top: 16px; }
+    .activity-row { display: grid; grid-template-columns: 37px 1fr auto; align-items: center; gap: 11px; padding: 12px 0; border-bottom: 1px solid #f0f1f6; }
+    .activity-row:last-child { border-bottom: 0; }
+    .person { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; color: white; font-size: 11px; font-weight: 800; }
+    .person.blue { background: #627fe9; }
+    .person.orange { background: #f19a63; }
+    .person.green { background: #5abca0; }
+    .person.pink { background: #dc779f; }
+    .activity-row strong { display: block; margin-bottom: 4px; font-size: 12px; }
+    .activity-row span { color: #9ca1b0; font-size: 10px; }
+    .amount { color: #30364a !important; font-weight: 750; }
+    .bottom { display: grid; grid-template-columns: 1.05fr 1fr; gap: 19px; margin-top: 19px; }
+    .progress-card { display: flex; align-items: center; justify-content: space-between; min-height: 120px; padding: 23px 25px; }
+    .progress-copy strong { display: block; margin-top: 9px; font-size: 22px; }
+    .ring { display: grid; place-items: center; width: 73px; height: 73px; border-radius: 50%; background: conic-gradient(#675ce9 0 74%, #edecfb 74%); }
+    .ring::after { content: "74%"; display: grid; place-items: center; width: 53px; height: 53px; border-radius: 50%; background: white; font-size: 12px; font-weight: 800; }
+    .task-card { min-height: 120px; padding: 23px 25px; color: white; border: 0; background: linear-gradient(120deg, #6359e7, #8d72ef); }
+    .task-card h2 { margin-bottom: 9px; }
+    .task-card p { max-width: 360px; margin: 0; color: #ddd8ff; font-size: 11px; line-height: 1.55; }
+    .task-card button { margin-top: 15px; padding: 9px 14px; border: 0; border-radius: 9px; color: #5d54d8; font-size: 11px; font-weight: 800; background: white; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside>
+      <div class="brand"><span class="logo"></span>LumaBoard</div>
+      <div class="nav-label">WORKSPACE</div>
+      <nav>
+        <div class="nav-item active"><span class="nav-icon">⌂</span>Overview</div>
+        <div class="nav-item"><span class="nav-icon">▦</span>Analytics</div>
+        <div class="nav-item"><span class="nav-icon">◎</span>Customers</div>
+        <div class="nav-item"><span class="nav-icon">◇</span>Products</div>
+        <div class="nav-item"><span class="nav-icon">□</span>Messages</div>
+      </nav>
+      <div class="nav-label" style="margin-top:28px">ACCOUNT</div>
+      <nav>
+        <div class="nav-item"><span class="nav-icon">⚙</span>Settings</div>
+        <div class="nav-item"><span class="nav-icon">?</span>Help center</div>
+      </nav>
+      <div class="upgrade"><strong>Unlock more insights</strong><span>Upgrade your plan to access complete analytics.</span><button>Upgrade plan</button></div>
+    </aside>
+    <main>
+      <header>
+        <div><h1>Good morning, Alex</h1><p class="subtitle">Here is what is happening with your store today.</p></div>
+        <div class="header-actions"><div class="search">⌕ &nbsp; Search anything</div><div class="avatar">AK</div></div>
+      </header>
+      <section class="stats">
+        <article class="card stat"><div class="stat-top"><span class="stat-label">Total revenue</span><span class="stat-icon">$</span></div><strong>$24,780</strong><span class="trend">↑ 12.5% this month</span></article>
+        <article class="card stat"><div class="stat-top"><span class="stat-label">New orders</span><span class="stat-icon">▣</span></div><strong>1,429</strong><span class="trend">↑ 8.2% this month</span></article>
+        <article class="card stat"><div class="stat-top"><span class="stat-label">Active customers</span><span class="stat-icon">◎</span></div><strong>892</strong><span class="trend">↑ 4.1% this month</span></article>
+        <article class="card stat"><div class="stat-top"><span class="stat-label">Conversion rate</span><span class="stat-icon">↗</span></div><strong>3.86%</strong><span class="trend neutral">0.3% from last month</span></article>
+      </section>
+      <section class="content">
+        <article class="card chart-card">
+          <div class="section-head"><div><h2>Revenue overview</h2><span class="section-note">Income compared with last month</span></div><div class="select">Last 7 days⌄</div></div>
+          <div class="chart"><i class="grid-line"></i><i class="grid-line"></i><i class="grid-line"></i><i class="grid-line"></i><i class="grid-line"></i>
+            <div class="bars">
+              <div class="bar-wrap"><i class="bar pale" style="height:36%"></i><i class="bar" style="height:54%"></i></div>
+              <div class="bar-wrap"><i class="bar pale" style="height:49%"></i><i class="bar" style="height:68%"></i></div>
+              <div class="bar-wrap"><i class="bar pale" style="height:43%"></i><i class="bar" style="height:60%"></i></div>
+              <div class="bar-wrap"><i class="bar pale" style="height:61%"></i><i class="bar" style="height:82%"></i></div>
+              <div class="bar-wrap"><i class="bar pale" style="height:54%"></i><i class="bar" style="height:71%"></i></div>
+              <div class="bar-wrap"><i class="bar pale" style="height:70%"></i><i class="bar" style="height:91%"></i></div>
+              <div class="bar-wrap"><i class="bar pale" style="height:62%"></i><i class="bar" style="height:78%"></i></div>
+            </div><div class="days"><span>Mon</span><span>Tue</span><span>Wed</span><span>Thu</span><span>Fri</span><span>Sat</span><span>Sun</span></div>
+          </div>
+        </article>
+        <article class="card activity"><div class="section-head"><div><h2>Recent orders</h2><span class="section-note">Latest customer purchases</span></div><span class="section-note">View all</span></div>
+          <div class="activity-list">
+            <div class="activity-row"><i class="person blue">JM</i><div><strong>James Miller</strong><span>#ORD-7421 · 2 min ago</span></div><span class="amount">$124</span></div>
+            <div class="activity-row"><i class="person orange">SL</i><div><strong>Sophia Lee</strong><span>#ORD-7420 · 18 min ago</span></div><span class="amount">$86</span></div>
+            <div class="activity-row"><i class="person green">NO</i><div><strong>Noah Owen</strong><span>#ORD-7419 · 42 min ago</span></div><span class="amount">$212</span></div>
+            <div class="activity-row"><i class="person pink">EM</i><div><strong>Emma Martin</strong><span>#ORD-7418 · 1 hr ago</span></div><span class="amount">$64</span></div>
+          </div>
+        </article>
+      </section>
+      <section class="bottom">
+        <article class="card progress-card"><div class="progress-copy"><span class="section-note">Monthly target</span><strong>$37,200 / $50,000</strong><span class="trend">You are ahead of schedule</span></div><div class="ring"></div></article>
+        <article class="card task-card"><h2>Plan your next campaign</h2><p>Use customer insights to build a campaign that reaches the right audience.</p><button>Create campaign</button></article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
