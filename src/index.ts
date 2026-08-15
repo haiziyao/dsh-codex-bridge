@@ -23,7 +23,6 @@ import {
 import { UnconfiguredVisionBackend } from './backend.ts'
 import {
   Config as ConfigSchema,
-  MIX_MODEL,
   MIX_PROVIDER,
   resolveConfig,
   RoutingSettingsSchema,
@@ -158,6 +157,26 @@ function imageAttachments(blocks: readonly ContentBlock[]): ImageAttachmentRef[]
     else if (block.type === 'tool-result') refs.push(...imageAttachments(block.content))
   }
   return refs
+}
+
+function sessionImageAttachment(agent: Agent, attachmentId: string): ImageAttachmentRef | undefined {
+  for (const event of agent.session.events) {
+    let content: readonly ContentBlock[] | undefined
+    switch (event.type) {
+      case 'user/message':
+        content = event.data.content
+        break
+      case 'assistant/message':
+      case 'tool/result':
+        content = event.data.message.content
+        break
+      default:
+        continue
+    }
+    const attachment = imageAttachments(content).find(ref => String(ref.attachmentId) === attachmentId)
+    if (attachment !== undefined) return attachment
+  }
+  return undefined
 }
 
 function toolContext(exec: ToolExecution): string {
@@ -304,11 +323,11 @@ export function apply(ctx: Context, input: PluginConfig): void {
   ctx.on('agent/pre-step', async ({ agent, messages, signal }, next) => {
     const decision = await next()
     if (decision.kind === 'reject' || signal.aborted) return decision
+    pendingVisionSteps.delete(String(agent.id))
     const enteredIds = new Set(decision.messages.map(message => message.id))
     const currentUserMessages = messages.filter(message =>
       message.source.kind === 'user' && enteredIds.has(message.id))
-    if (agent.options.provider === MIX_PROVIDER && agent.options.model === MIX_MODEL
-      && currentUserMessages.length > 0) {
+    if (currentUserMessages.length > 0) {
       pendingVisionSteps.set(String(agent.id), { agent, messages: currentUserMessages })
     }
     return decision
@@ -396,15 +415,16 @@ export function apply(ctx: Context, input: PluginConfig): void {
     isConcurrencySafe: () => true,
     async execute(args, exec) {
       if (exec.agent === undefined) throw new Error('vision-mix: attachment_query requires a session-owned agent call')
-      const record = (await history.list(exec.agent.id)).find(item =>
-        String(item.attachment.attachmentId) === args.attachment_id)
-      if (record === undefined) {
+      const attachment = sessionImageAttachment(exec.agent, args.attachment_id)
+        ?? (await history.list(exec.agent.id)).find(item =>
+          String(item.attachment.attachmentId) === args.attachment_id)?.attachment
+      if (attachment === undefined) {
         throw new Error(`vision-mix: attachment "${args.attachment_id}" is not available in this session`)
       }
       const analyzed = await analyzeAttachment({
         sessionId: exec.agent.id,
         origin: 'tool',
-        attachment: record.attachment,
+        attachment,
         prompt: renderVisionPrompt(args.question.trim() || 'Describe the image in detail.'),
         signal: exec.signal,
       }, dependencies())
@@ -500,7 +520,8 @@ export function apply(ctx: Context, input: PluginConfig): void {
       const [visionRecords, generationRecords] = await Promise.all([
         history.list(exec.agent.id), generationHistory.list(exec.agent.id),
       ])
-      const sourceAttachment = visionRecords.find(record => String(record.attachment.attachmentId) === args.attachment_id)?.attachment
+      const sourceAttachment = sessionImageAttachment(exec.agent, args.attachment_id)
+        ?? visionRecords.find(record => String(record.attachment.attachmentId) === args.attachment_id)?.attachment
         ?? generationRecords.find((record): record is Extract<GenerationRecord, { status: 'success' }> =>
           record.status === 'success' && String(record.outputAttachment.attachmentId) === args.attachment_id)?.outputAttachment
       if (sourceAttachment === undefined) {

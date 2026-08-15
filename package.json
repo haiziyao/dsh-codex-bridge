@@ -1,6 +1,6 @@
 {
   "name": "dsh-vision-mix",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A DeepSeek Harness Mix plugin for vision routing plus GPT Image generation and editing.",
   "type": "module",
   "main": "lib/index.js",

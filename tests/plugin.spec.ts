@@ -110,7 +110,8 @@ describe('Vision Mix host plugin', () => {
     const steered: UserMessage[] = []
     const agent = {
       id: SessionId('session-a'),
-      options: { provider: 'vision-mix', model: 'mix' },
+      options: {},
+      session: { events: [{ type: 'user/message', data: currentMessage }] },
       steer(message: UserMessage) { steered.push(message) },
     } as unknown as Agent
     const firstStep = await preStep(
@@ -180,7 +181,7 @@ describe('Vision Mix host plugin', () => {
 
     vi.spyOn(CallHistory.prototype, 'list').mockResolvedValue([{
       id: CallId('stored-image'), sessionId: agent.id, createdAt: 1, durationMs: 1,
-      origin: 'message', backendId: 'vision', model: 'see', prompt: 'first question', attachment,
+      origin: 'message', backendId: 'vision', model: 'see', prompt: 'first question', attachment: previousAttachment,
       status: 'success', title: 'screen', result: 'visible login error',
     }])
     const attachmentQuery = registeredTools.find(tool => tool.name === 'vision_mix_attachment_query')
