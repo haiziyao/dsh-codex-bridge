@@ -1,6 +1,7 @@
 # DSH Codex Bridge
 
 ![Version](https://img.shields.io/badge/version-0.1.2-4c7dff)
+[![npm](https://img.shields.io/npm/v/dsh-codex-bridge?color=cb3837)](https://www.npmjs.com/package/dsh-codex-bridge)
 ![License](https://img.shields.io/badge/license-MIT-22a06b)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-plugin-6f5cff)
 
@@ -43,17 +44,25 @@
 
 要求 Node.js `^22.19.0` 或 `>=24.0.0`，并使用 pnpm。
 
-推荐安装 GitHub Release 中已经构建好的 tarball。它不需要批准构建脚本：
+推荐直接从 npm 安装已经构建好的正式包：
 
 ```powershell
 cd E:\git\deepseek-harness
-pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.2/dsh-codex-bridge-0.1.2.tgz
+pnpm dsh plugin --profile web add dsh-codex-bridge
 ```
 
 安装命令会把插件依赖和 bundle 写入 Web profile。之后直接启动：
 
 ```powershell
 pnpm dsh web
+```
+
+无需使用 `--patch`，也无需在插件中重复配置模型密钥。npm 包页面为 [dsh-codex-bridge](https://www.npmjs.com/package/dsh-codex-bridge)。
+
+如果所用 npm 镜像尚未同步最新版本，可以临时改用 npm 官方 registry，或安装 GitHub Release 中相同版本的 tarball：
+
+```powershell
+pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.2/dsh-codex-bridge-0.1.2.tgz
 ```
 
 从本地 checkout 安装时，在 Harness 根目录执行：
