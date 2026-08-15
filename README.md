@@ -41,11 +41,11 @@
 
 要求 Node.js `^22.19.0` 或 `>=24.0.0`，并使用 pnpm。
 
-从 GitHub 安装到 Harness 的 Web profile：
+推荐安装 GitHub Release 中已经构建好的 tarball。它不需要批准构建脚本：
 
 ```powershell
 cd E:\git\deepseek-harness
-pnpm dsh plugin --profile web add github:haiziyao/dsh-codex-bridge
+pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.0/dsh-codex-bridge-0.1.0.tgz
 ```
 
 安装命令会把插件依赖和 bundle 写入 Web profile。之后直接启动：
@@ -60,7 +60,20 @@ pnpm dsh web
 pnpm dsh plugin --profile web add ../dsh-codex-bridge
 ```
 
-Git 源安装会通过 `prepare` 脚本生成服务端和 Web 客户端 bundle。pnpm 10 及以上默认拦截第三方依赖的构建脚本；如果安装器提示批准 `dsh-codex-bridge` 的构建脚本，请确认后继续。
+也可以直接从 GitHub 源码安装：
+
+```powershell
+pnpm dsh plugin --profile web add github:haiziyao/dsh-codex-bridge
+```
+
+Git 源安装会通过 `prepare` 脚本生成服务端和 Web 客户端 bundle。按照 DSH 和 pnpm 10 及以上的安全策略，第一次命令会停止并打印一条完整的 `allowBuilds` 键。把该键原样加入 `%USERPROFILE%\.dsh\profiles\web\pnpm-workspace.yaml` 后重新执行同一命令：
+
+```yaml
+allowBuilds:
+  'dsh-codex-bridge@https://codeload.github.com/...': true
+```
+
+必须使用 pnpm 错误中给出的完整 URL 和 commit 键，不能照抄上面的省略示例。通过 DSH Market 安装时，市场界面会负责这一步显式授权。
 
 如果 profile 已启用 `dsh-better-sidebar`，Bridge GPT 会自动添加“识图记录”标签；未启用时无需额外操作。
 
