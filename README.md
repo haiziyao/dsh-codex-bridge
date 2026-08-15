@@ -1,6 +1,5 @@
 # DSH Codex Bridge
 
-![Version](https://img.shields.io/badge/version-0.1.2-4c7dff)
 [![npm](https://img.shields.io/npm/v/dsh-codex-bridge?color=cb3837)](https://www.npmjs.com/package/dsh-codex-bridge)
 ![License](https://img.shields.io/badge/license-MIT-22a06b)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-plugin-6f5cff)
