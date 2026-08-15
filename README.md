@@ -20,12 +20,13 @@
 
 | 输入 | 路由 |
 |---|---|
-| 纯文本消息 | `Mix` 直接调用基础模型，不调用视觉模型或意图模型 |
-| 用户上传图片 | 视觉模型先分析图片，基础模型读取文字分析上下文后回复 |
+| 与图片无关的纯文本消息 | `Mix` 直接调用基础模型，不调用视觉模型或意图模型 |
+| 用户上传图片 | 用户消息立即显示；视觉模型分析图片后，基础模型读取持久化的文字分析上下文再回复 |
+| 后续追问最近图片 | 明确图片指代直接重新识图；模糊追问由可选意图模型判断，再用当前问题查看最近图片 |
 | Agent 截图或工具返回图片 | 工具完成后分析真实的 `image` content block，再把结果追加到下一步上下文 |
 | 工具没有返回图片 | 原样继续，不触发视觉模型或意图模型 |
 
-每个 agent step 只检查该 step 原始输入中的新图片，不扫描下游重新组装的历史消息。上一轮图片不会在下一轮再次识别，工具续步也不会重复生成侧边栏记录；同一张图片在用户明确重新发送时仍视为一次新的调用。
+每个 agent step 只检查该 step 原始输入中的新图片，不扫描下游重新组装的历史消息。普通下一轮和工具续步不会重复生成识图记录；只有用户明确或经意图模型判断继续询问最近图片时，才会用新问题重新分析一次。同一张图片被用户明确重新发送时也视为一次新的调用。
 
 视觉预处理提示词会要求模型检查实际像素：人物和虚构角色会比较发型、服装、配饰、画风与可能出处；界面截图会提取文字、布局、控件状态和错误区域。发送给视觉模型的完整提示词也会记录在侧边栏中。
 
@@ -50,6 +51,12 @@ cd E:\git\deepseek-harness
 pnpm dsh plugin --profile web add dsh-codex-bridge
 ```
 
+推荐同时安装 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar)，用于显示按会话隔离的识图记录、图片预览、完整提示词和分析结果：
+
+```powershell
+pnpm dsh plugin --profile web add dsh-better-sidebar
+```
+
 安装命令会把插件依赖和 bundle 写入 Web profile。之后直接启动：
 
 ```powershell
@@ -58,10 +65,12 @@ pnpm dsh web
 
 无需使用 `--patch`，也无需在插件中重复配置模型密钥。npm 包页面为 [dsh-codex-bridge](https://www.npmjs.com/package/dsh-codex-bridge)。
 
-如果所用 npm 镜像尚未同步最新版本，可以临时改用 npm 官方 registry，或安装 GitHub Release 中相同版本的 tarball：
+如果所用 npm 镜像尚未同步最新版本，可以只为当前终端临时改用 npm 官方 registry：
 
 ```powershell
-pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.2/dsh-codex-bridge-0.1.2.tgz
+$env:npm_config_registry='https://registry.npmjs.org/'
+pnpm dsh plugin --profile web add dsh-codex-bridge
+Remove-Item Env:npm_config_registry
 ```
 
 从本地 checkout 安装时，在 Harness 根目录执行：
@@ -103,7 +112,7 @@ imageModel:
 autoAnalyzeToolImages: true
 ```
 
-插件 bundle 不会把这两项模型写入用户 profile。如果你的模型 id 不同，在“设置 → Bridge GPT”从全局已配置模型中选择基础模型、图片模型和可选意图识别模型，不需要再次填写密钥。
+插件 bundle 不会把这些模型写入用户 profile。如果你的模型 id 不同，在“设置 → Bridge GPT”从全局已配置模型中选择基础模型、图片模型和可选意图识别模型，不需要再次填写密钥。建议配置意图识别模型：它能判断“再详细一点”“它还有什么特征”等模糊追问是否需要重新查看本会话最近一张图片；未配置时，明确提到图片、截图或照片的追问仍会重新识图。
 
 ## 本地开发启动
 
@@ -144,13 +153,14 @@ pnpm run build
 
 ```powershell
 pnpm version patch --no-git-tag-version
+$version = (Get-Content package.json | ConvertFrom-Json).version
 git add package.json pnpm-lock.yaml
-git commit -m "chore: release v0.1.3"
-git tag v0.1.3
-git push origin main v0.1.3
+git commit -m "chore: release v$version"
+git tag "v$version"
+git push origin main "v$version"
 ```
 
-如果实际版本不是 `0.1.3`，标签必须使用对应版本。发布工作流无需 npm Token；npm 包的 Trusted Publisher 必须绑定 GitHub 仓库 `haiziyao/dsh-codex-bridge`、工作流文件 `publish.yml`，并允许 `npm publish`。
+标签必须与 `package.json` 中的版本完全对应。发布工作流无需 npm Token；npm 包的 Trusted Publisher 必须绑定 GitHub 仓库 `haiziyao/dsh-codex-bridge`、工作流文件 `publish.yml`，并允许 `npm publish`。
 
 ## License
 

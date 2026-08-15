@@ -1,10 +1,10 @@
 /** Host plugin for Mix routing and session-scoped image analysis. */
 import type { Context } from '@deepseek-ai/cordis'
-import type {} from '@deepseek-ai/dsh-agent'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { ImageAttachmentRef, ImageMediaType } from '@deepseek-ai/dsh-attachment'
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { createUserMessage, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import { createUserMessage, type ContentBlock, type GenerateOptions, type UserMessage } from '@deepseek-ai/dsh-llm'
 import { installSettingsSection } from '@deepseek-ai/dsh-settings'
 import { defineTool, type PostToolDecision, type ToolExecution } from '@deepseek-ai/dsh-tools'
 import { readFile } from 'node:fs/promises'
@@ -13,17 +13,21 @@ import {
   analyzeAttachment,
   analyzeMessageImages,
   createAnalysisContext,
+  explicitlyReferencesImage,
   MixedAdapter,
+  parseImageReferenceDecision,
+  requestBatchText,
   renderVisionPrompt,
 } from './bridge.ts'
 import {
   Config as ConfigSchema,
+  MIX_MODEL,
   MIX_PROVIDER,
   resolveConfig,
   RoutingSettingsSchema,
   type Config as PluginConfig,
 } from './config.ts'
-import { CallHistory } from './history.ts'
+import { CallHistory, type VisionCallRecord, type VisionCallSuccess } from './history.ts'
 import {
   createHistoryHandlers,
   createSettingsHandlers,
@@ -53,6 +57,11 @@ interface WebRouteRegistry {
     path: string
     handler: (request: HttpRequest, response: HttpResponse) => void | Promise<void>
   }): () => void
+}
+
+interface PendingVisionStep {
+  agent: Agent
+  messages: UserMessage[]
 }
 
 function webRouteRegistry(ctx: Context): WebRouteRegistry | undefined {
@@ -100,6 +109,47 @@ async function toolVisionRequest(ctx: Context, config: ReturnType<typeof resolve
   return generated
 }
 
+function containsImage(messages: readonly UserMessage[]): boolean {
+  return messages.some(message => message.content.some(block => block.type === 'image'))
+}
+
+function latestSuccessfulCall(records: readonly VisionCallRecord[]): VisionCallSuccess | undefined {
+  return records.find((record): record is VisionCallSuccess => record.status === 'success')
+}
+
+async function referencesRecentImage(
+  ctx: Context,
+  config: ReturnType<typeof resolveConfig>,
+  request: string,
+  recent: VisionCallSuccess,
+  signal?: AbortSignal,
+): Promise<boolean> {
+  if (explicitlyReferencesImage(request)) return true
+  if (config.intentModel === undefined) return false
+  try {
+    const generated = await generateText(ctx, config.intentModel, [{
+      content: [{
+        type: 'text',
+        text: [
+          'Decide whether the current user message asks to inspect or elaborate on the most recent image in this conversation.',
+          'A continuation such as "explain more", "what else is visible", or a pronoun referring to the pictured subject counts as an image reference.',
+          'Ordinary conversation about an unrelated topic does not.',
+          'Reply with ONLY JSON: {"referencesImage":true} or {"referencesImage":false}.',
+          '',
+          `Most recent image title: ${recent.title}`,
+          `Most recent image analysis: ${recent.result}`,
+          `Current user message: ${request}`,
+        ].join('\n'),
+      }],
+      source: { kind: 'plugin', plugin: 'bridge-gpt' },
+    }], signal)
+    return parseImageReferenceDecision(generated)
+  } catch (error: unknown) {
+    if (signal?.aborted) throw error
+    return false
+  }
+}
+
 /** Register the fixed Mix route, user/tool image ingress, tool, and session-history routes. */
 export function apply(ctx: Context, input: PluginConfig): void {
   let config = resolveConfig(input)
@@ -115,15 +165,65 @@ export function apply(ctx: Context, input: PluginConfig): void {
   })
   const history = new CallHistory(join(resolveDshHome(), 'bridge-gpt', 'v1', 'calls'))
   const dependencies = () => ({ backend, attachments: ctx.attachments, history })
+  const pendingVisionSteps = new Map<string, PendingVisionStep>()
 
-  ctx.llm.registerAdapter([MIX_PROVIDER], new MixedAdapter(ctx, () => config))
+  ctx.llm.registerAdapter([MIX_PROVIDER], new MixedAdapter(ctx, () => config, async (options: GenerateOptions) => {
+    if (options.sessionId === undefined) return false
+    const key = String(options.sessionId)
+    const pending = pendingVisionSteps.get(key)
+    if (pending === undefined) return false
+    pendingVisionSteps.delete(key)
+    options.signal?.throwIfAborted()
+
+    const contexts = []
+    try {
+      contexts.push(...await analyzeMessageImages({
+        sessionId: pending.agent.id,
+        messages: pending.messages,
+        ...(options.signal === undefined ? {} : { signal: options.signal }),
+      }, dependencies()))
+      if (contexts.length === 0 && !containsImage(pending.messages)) {
+        const recent = latestSuccessfulCall(await history.list(pending.agent.id))
+        const request = requestBatchText(pending.messages)
+        if (recent !== undefined && await referencesRecentImage(ctx, config, request, recent, options.signal)) {
+          const analyzed = await analyzeAttachment({
+            sessionId: pending.agent.id,
+            origin: 'message',
+            attachment: recent.attachment,
+            prompt: renderVisionPrompt(request),
+            ...(options.signal === undefined ? {} : { signal: options.signal }),
+          }, dependencies())
+          contexts.push(createAnalysisContext(analyzed.title, analyzed.result))
+        }
+      }
+    } catch (error: unknown) {
+      if (options.signal?.aborted) throw error
+      contexts.push(createUserMessage({
+        content: [{ type: 'text', text: `<img-caption-error>${String(error)}</img-caption-error>` }],
+        source: { kind: 'plugin', plugin: 'bridge-gpt' },
+      }))
+    }
+    if (contexts.length === 0) return false
+    for (const context of contexts) pending.agent.steer(context)
+    return true
+  }))
 
   ctx.on('agent/pre-step', async ({ agent, messages, signal }, next) => {
     const decision = await next()
     if (decision.kind === 'reject' || signal.aborted) return decision
-    const contexts = await analyzeMessageImages({ sessionId: agent.id, messages, signal }, dependencies())
-    return { kind: 'enter', messages: [...decision.messages, ...contexts] }
+    const enteredIds = new Set(decision.messages.map(message => message.id))
+    const currentUserMessages = messages.filter(message =>
+      message.source.kind === 'user' && enteredIds.has(message.id))
+    if (agent.options.provider === MIX_PROVIDER && agent.options.model === MIX_MODEL
+      && currentUserMessages.length > 0) {
+      pendingVisionSteps.set(String(agent.id), { agent, messages: currentUserMessages })
+    }
+    return decision
   }, { prepend: true })
+
+  ctx.on('agent/disposed', ({ agent }) => {
+    pendingVisionSteps.delete(String(agent.id))
+  })
 
   ctx.on('tools/post-execute', async (exec, result, next): Promise<PostToolDecision> => {
     const decision = await next()

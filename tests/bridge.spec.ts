@@ -4,7 +4,13 @@ import { CallId as LlmCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { describe, expect, it, vi } from 'vitest'
 import type { VisionBackend } from '../src/backend.ts'
-import { analyzeMessageImages, MixedAdapter, renderVisionPrompt } from '../src/bridge.ts'
+import {
+  analyzeMessageImages,
+  explicitlyReferencesImage,
+  MixedAdapter,
+  parseImageReferenceDecision,
+  renderVisionPrompt,
+} from '../src/bridge.ts'
 import { resolveConfig } from '../src/config.ts'
 import { CallId, type VisionCallRecord } from '../src/history.ts'
 
@@ -34,6 +40,14 @@ describe('analyzeMessageImages', () => {
     expect(prompt).toContain('transcribe important visible text')
     expect(prompt).toContain('Inspect the actual pixels')
     expect(prompt).toContain('Request: 这是谁？')
+  })
+
+  it('recognizes explicit cross-turn image references and validates intent JSON', () => {
+    expect(explicitlyReferencesImage('再详细介绍一下这张图片')).toBe(true)
+    expect(explicitlyReferencesImage('What else is visible in the previous screenshot?')).toBe(true)
+    expect(explicitlyReferencesImage('介绍一下 TypeScript')).toBe(false)
+    expect(parseImageReferenceDecision('{"referencesImage":true}')).toBe(true)
+    expect(() => parseImageReferenceDecision('{"answer":true}')).toThrow(/invalid image-reference decision/)
   })
 
   it('bypasses text-only turns with no image or intent request', async () => {
@@ -78,5 +92,17 @@ describe('MixedAdapter', () => {
         type: 'tool-result', content: [{ type: 'text', text: expect.stringContaining('Bridge GPT') }],
       })] })],
     }))
+  })
+
+  it('can finish a preprocessing-only step without calling the base model', async () => {
+    const delegated = vi.fn(async function* () {})
+    const defer = vi.fn(async () => true)
+    const config = resolveConfig({ baseModel: { provider: 'base', model: 'chat' } })
+    const adapter = new MixedAdapter({ llm: { stream: delegated } } as unknown as Context, () => config, defer)
+    const chunks = []
+    for await (const chunk of adapter.stream({ provider: 'bridge-gpt', model: 'mix', messages: [] })) chunks.push(chunk)
+    expect(defer).toHaveBeenCalledOnce()
+    expect(delegated).not.toHaveBeenCalled()
+    expect(chunks).toEqual([{ type: 'finish', reason: { kind: 'stop' } }])
   })
 })

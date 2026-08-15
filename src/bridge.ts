@@ -16,6 +16,9 @@ import type { VisionAnalyzeResult, VisionBackend } from './backend.ts'
 import { MIX_MODEL, type ResolvedConfig } from './config.ts'
 import { CallId, type VisionCallRecord } from './history.ts'
 
+/** Hook that can finish a preprocessing-only Mix step before base-model delegation. */
+export type DeferBaseModel = (options: GenerateOptions) => Promise<boolean>
+
 interface AttachmentReader {
   readImage(ref: ImageAttachmentRef, signal?: AbortSignal): Promise<StoredImageAttachment>
 }
@@ -69,13 +72,36 @@ export function renderVisionPrompt(request: string): string {
   ].join('\n')
 }
 
-function requestText(message: UserMessage): string {
+/** Return the text portion of one user message. */
+export function requestText(message: UserMessage): string {
   const text = message.content
     .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
     .map(block => block.text)
     .join('\n')
     .trim()
   return text || 'Describe the image in detail.'
+}
+
+/** Return the text supplied by the current claimed user-message batch. */
+export function requestBatchText(messages: readonly UserMessage[]): string {
+  return messages.map(requestText).filter(text => text.length > 0).join('\n').trim()
+}
+
+/** Whether a text request explicitly points back to an image in the session. */
+export function explicitlyReferencesImage(request: string): boolean {
+  return /(?:这|那|上|前|刚才|之前).{0,8}(?:张)?(?:图|图片|截图|照片)|(?:图|图片|截图|照片|画面)(?:里|中|上|的)|(?:继续|再).{0,8}(?:图|图片|截图|照片)/u.test(request)
+    || /\b(?:this|that|the|previous|above|last|same)\s+(?:image|picture|photo|screenshot)\b|\b(?:in|from|about)\s+(?:it|the image|the picture|the screenshot)\b/iu.test(request)
+}
+
+/** Parse the strict JSON response requested from the image-reference classifier. */
+export function parseImageReferenceDecision(value: string): boolean {
+  const trimmed = value.trim().replace(/^```(?:json)?\s*/iu, '').replace(/\s*```$/u, '')
+  const parsed: unknown = JSON.parse(trimmed)
+  if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)
+    || typeof (parsed as Record<string, unknown>).referencesImage !== 'boolean') {
+    throw new Error('bridge-gpt: intent model returned an invalid image-reference decision')
+  }
+  return (parsed as { referencesImage: boolean }).referencesImage
 }
 
 /** Build the durable plugin context that represents image pixels to a text-only model. */
@@ -188,7 +214,11 @@ function textOnlyBlocks(blocks: readonly ContentBlock[], nested: boolean): Conte
 
 /** Image-admitting Mix route that delegates only text-safe content to the selected base model. */
 export class MixedAdapter extends LlmAdapter {
-  constructor(private readonly ctx: Context, private readonly current: () => ResolvedConfig) {
+  constructor(
+    private readonly ctx: Context,
+    private readonly current: () => ResolvedConfig,
+    private readonly deferBaseModel?: DeferBaseModel,
+  ) {
     super()
   }
 
@@ -219,6 +249,10 @@ export class MixedAdapter extends LlmAdapter {
   }
 
   override async * stream(options: GenerateOptions): AsyncIterable<StreamChunk> {
+    if (this.deferBaseModel !== undefined && await this.deferBaseModel(options)) {
+      yield { type: 'finish', reason: { kind: 'stop' } }
+      return
+    }
     const messages = options.messages.flatMap((message) => {
       const content = textOnlyBlocks(message.content, false)
       return content.length === 0 ? [] : [{ ...message, content }]
