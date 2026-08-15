@@ -79,6 +79,10 @@ describe('Bridge GPT browser views', () => {
       calls: [{
         id: 'call-1', createdAt: 1_700_000_000_000, durationMs: 321,
         origin: 'message', backendId: 'vision', model: 'see',
+        attachment: {
+          attachmentId: `sha256:${'a'.repeat(64)}`, mediaType: 'image/png', bytes: 2048,
+          width: 1280, height: 720, name: 'minecraft.png',
+        },
         prompt: 'full preprocessing prompt', status: 'success', title: '角色识别', result: '最可能是测试角色。',
       }],
     }))
@@ -91,6 +95,9 @@ describe('Bridge GPT browser views', () => {
     expect(details?.open).toBe(true)
     expect(screen.getByRole('img', { name: '角色识别' })).toBeTruthy()
     expect(screen.getByText('full preprocessing prompt')).toBeTruthy()
+    expect(screen.getByText('minecraft.png')).toBeTruthy()
+    expect(screen.getByText(`dsh-attachment://sha256%3A${'a'.repeat(64)}`)).toBeTruthy()
+    expect(screen.getByText('image/png · 1280×720 · 2.0 KiB')).toBeTruthy()
     await waitFor(() => expect(view.container.firstElementChild?.className).toContain('historyRoot'))
   })
 })

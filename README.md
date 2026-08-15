@@ -32,6 +32,28 @@
 
 完整设计见 [DESIGN.md](DESIGN.md)。
 
+## 图片上传与定位
+
+Web 输入框中的图片在发送前只是浏览器临时文件；发送时由 Harness 写入私有的内容寻址附件存储，并在 `user/message` 中记录结构化 `image` block：
+
+```json
+{
+  "type": "image",
+  "attachment": {
+    "attachmentId": "sha256:…",
+    "mediaType": "image/png",
+    "bytes": 123456,
+    "width": 1920,
+    "height": 1080,
+    "name": "minecraft.png"
+  }
+}
+```
+
+Bridge GPT 会把这个引用转成模型可读的逻辑定位符 `dsh-attachment://sha256%3A…`，并在图片消息的文本映射、识图分析上下文和侧边栏详情中记录 attachment id、原文件名、格式、尺寸与大小。侧边栏还显示当前会话授权的 `/bridge-gpt/image/<callId>?sessionId=…` 预览地址。
+
+逻辑定位符不是工作区文件路径。默认本地存储实现把对象放在 `<DSH_HOME>/attachments/v1/objects/<前两位>/<sha256>`，但宿主物理路径不会写入会话：它属于私有实现，换机器、远程附件后端或迁移 `DSH_HOME` 后可能变化。基础模型会收到“不要搜索工作区”的明确提示；需要再次查看像素时，可以由路由自动重分析最近图片，也可以调用 `bridge_gpt_attachment_query`，用当前会话中的 `attachment_id` 重新打开附件。
+
 ## 侧边栏是可选依赖
 
 `dsh-better-sidebar` 不是插件启动的必要条件：
@@ -132,6 +154,7 @@ pnpm dsh web --patch ../dsh-codex-bridge/dsh-patch.yml
 - 插件不包含硬编码 API Key。
 - 模型请求通过 Harness 的模型注册表和凭据系统发送。
 - 识图历史保存在 `$DSH_HOME/bridge-gpt/v1/calls/`。
+- 用户上传图片保存在 Harness attachment 服务中；会话和识图记录只保留稳定 attachment 引用，不泄露宿主绝对路径。
 - 图片预览同时校验 `sessionId` 和该会话的 `callId`。
 - 记录只在当前会话的侧边栏中查询和显示。
 

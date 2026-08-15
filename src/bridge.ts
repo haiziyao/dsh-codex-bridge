@@ -104,16 +104,50 @@ export function parseImageReferenceDecision(value: string): boolean {
   return (parsed as { referencesImage: boolean }).referencesImage
 }
 
+/** Stable logical locator for one opaque DSH attachment id. */
+export function attachmentLocator(attachment: ImageAttachmentRef): string {
+  return `dsh-attachment://${encodeURIComponent(String(attachment.attachmentId))}`
+}
+
+function attachmentLines(attachment: ImageAttachmentRef): string[] {
+  return [
+    `attachment_id: ${String(attachment.attachmentId)}`,
+    `attachment_locator: ${attachmentLocator(attachment)}`,
+    ...(attachment.name === undefined ? [] : [`original_name: ${attachment.name}`]),
+    `media_type: ${attachment.mediaType}`,
+    `dimensions: ${attachment.width}x${attachment.height}`,
+    `encoded_bytes: ${attachment.bytes}`,
+  ]
+}
+
+/** Replace image bytes with an actionable, model-readable attachment reference. */
+export function renderAttachmentReference(attachment: ImageAttachmentRef): string {
+  return [
+    '<image-attachment>',
+    ...attachmentLines(attachment),
+    'storage: Private DSH attachment storage; this locator is not a workspace filesystem path.',
+    'Do not search the workspace for this image. Bridge GPT can reopen it by attachment_id for pixel-level follow-up.',
+    '</image-attachment>',
+  ].join('\n')
+}
+
 /** Build the durable plugin context that represents image pixels to a text-only model. */
-export function createAnalysisContext(title: string, result: string): UserMessage {
+export function createAnalysisContext(
+  title: string,
+  result: string,
+  attachment: ImageAttachmentRef,
+): UserMessage {
   return createUserMessage({
     content: [{
       type: 'text',
       text: [
         '<img-caption>',
+        ...attachmentLines(attachment),
         `title: ${title}`,
         `analysis: ${result}`,
-        'The image pixels are represented by this analysis.',
+        'The vision backend inspected the actual stored bytes for this attachment.',
+        'This is not a workspace file path. Do not search the filesystem or claim the pixels are unavailable.',
+        'For another pixel-level question, Bridge GPT can reopen this attachment by attachment_id.',
         '</img-caption>',
       ].join('\n'),
     }],
@@ -190,21 +224,21 @@ export async function analyzeMessageImages(
         prompt,
         ...(request.signal === undefined ? {} : { signal: request.signal }),
       }, dependencies)
-      contexts.push(createAnalysisContext(analyzed.title, analyzed.result))
+      contexts.push(createAnalysisContext(analyzed.title, analyzed.result, image.attachment))
     }
   }
   return contexts
 }
 
-function textOnlyBlocks(blocks: readonly ContentBlock[], nested: boolean): ContentBlock[] {
+function textOnlyBlocks(blocks: readonly ContentBlock[]): ContentBlock[] {
   const output: ContentBlock[] = []
   for (const block of blocks) {
     if (block.type === 'image') {
-      if (nested) output.push({ type: 'text', text: '[Image analyzed by Bridge GPT in the following context.]' })
+      output.push({ type: 'text', text: renderAttachmentReference(block.attachment) })
       continue
     }
     if (block.type === 'tool-result') {
-      output.push({ ...block, content: textOnlyBlocks(block.content, true) })
+      output.push({ ...block, content: textOnlyBlocks(block.content) })
       continue
     }
     output.push(block)
@@ -254,7 +288,7 @@ export class MixedAdapter extends LlmAdapter {
       return
     }
     const messages = options.messages.flatMap((message) => {
-      const content = textOnlyBlocks(message.content, false)
+      const content = textOnlyBlocks(message.content)
       return content.length === 0 ? [] : [{ ...message, content }]
     })
     const base = this.current().baseModel

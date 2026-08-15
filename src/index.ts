@@ -193,7 +193,7 @@ export function apply(ctx: Context, input: PluginConfig): void {
             prompt: renderVisionPrompt(request),
             ...(options.signal === undefined ? {} : { signal: options.signal }),
           }, dependencies())
-          contexts.push(createAnalysisContext(analyzed.title, analyzed.result))
+          contexts.push(createAnalysisContext(analyzed.title, analyzed.result, recent.attachment))
         }
       }
     } catch (error: unknown) {
@@ -243,7 +243,7 @@ export function apply(ctx: Context, input: PluginConfig): void {
           prompt: renderVisionPrompt(question),
           signal: exec.signal,
         }, dependencies())
-        contexts.push(createAnalysisContext(analyzed.title, analyzed.result))
+        contexts.push(createAnalysisContext(analyzed.title, analyzed.result, attachment))
       } catch (error: unknown) {
         if (exec.signal.aborted) return decision
         contexts.push(createUserMessage({
@@ -281,6 +281,36 @@ export function apply(ctx: Context, input: PluginConfig): void {
         sessionId: exec.agent.id,
         origin: 'tool',
         attachment,
+        prompt: renderVisionPrompt(args.question.trim() || 'Describe the image in detail.'),
+        signal: exec.signal,
+      }, dependencies())
+      return analyzed.result
+    },
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'bridge_gpt_attachment_query',
+    description: 'Reopen one DSH-uploaded image by its attachment_id and answer a new pixel-level question. The attachment must belong to the current session.',
+    parameters: {
+      attachment_id: { type: 'string', required: true, description: 'Opaque attachment_id such as sha256:… from an image-attachment or img-caption context' },
+      question: { type: 'string', required: true, description: 'Question or extraction request for the stored image' },
+    },
+    output: {
+      schema: { type: 'string' },
+      render: (_args, value) => [{ type: 'text', text: value }],
+    },
+    isConcurrencySafe: () => true,
+    async execute(args, exec) {
+      if (exec.agent === undefined) throw new Error('bridge-gpt: attachment_query requires a session-owned agent call')
+      const record = (await history.list(exec.agent.id)).find(item =>
+        String(item.attachment.attachmentId) === args.attachment_id)
+      if (record === undefined) {
+        throw new Error(`bridge-gpt: attachment "${args.attachment_id}" is not available in this session`)
+      }
+      const analyzed = await analyzeAttachment({
+        sessionId: exec.agent.id,
+        origin: 'tool',
+        attachment: record.attachment,
         prompt: renderVisionPrompt(args.question.trim() || 'Describe the image in detail.'),
         signal: exec.signal,
       }, dependencies())

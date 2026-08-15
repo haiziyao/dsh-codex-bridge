@@ -6,9 +6,11 @@ import { describe, expect, it, vi } from 'vitest'
 import type { VisionBackend } from '../src/backend.ts'
 import {
   analyzeMessageImages,
+  attachmentLocator,
   explicitlyReferencesImage,
   MixedAdapter,
   parseImageReferenceDecision,
+  renderAttachmentReference,
   renderVisionPrompt,
 } from '../src/bridge.ts'
 import { resolveConfig } from '../src/config.ts'
@@ -50,6 +52,15 @@ describe('analyzeMessageImages', () => {
     expect(() => parseImageReferenceDecision('{"answer":true}')).toThrow(/invalid image-reference decision/)
   })
 
+  it('renders an actionable attachment locator without inventing a filesystem path', () => {
+    expect(attachmentLocator(IMAGE)).toBe(`dsh-attachment://sha256%3A${'b'.repeat(64)}`)
+    const reference = renderAttachmentReference({ ...IMAGE, name: 'minecraft.png' })
+    expect(reference).toContain(`attachment_id: sha256:${'b'.repeat(64)}`)
+    expect(reference).toContain('original_name: minecraft.png')
+    expect(reference).toContain('not a workspace filesystem path')
+    expect(reference).toContain('Do not search the workspace')
+  })
+
   it('bypasses text-only turns with no image or intent request', async () => {
     const analyze = vi.fn<VisionBackend['analyze']>()
     const context = setup({ id: 'vision', model: 'see', analyze })
@@ -67,6 +78,12 @@ describe('analyzeMessageImages', () => {
     })
     const result = await analyzeMessageImages({ sessionId: SessionId('s'), messages: [message] }, context.dependencies)
     expect(result[0]).toMatchObject({ source: { kind: 'plugin', plugin: 'bridge-gpt' }, content: [{ type: 'text', text: expect.stringContaining('green button') }] })
+    expect(result[0]?.content[0]).toMatchObject({
+      type: 'text', text: expect.stringContaining(`attachment_id: sha256:${'b'.repeat(64)}`),
+    })
+    expect(result[0]?.content[0]).toMatchObject({
+      type: 'text', text: expect.stringContaining('Do not search the filesystem'),
+    })
     expect(analyze).toHaveBeenCalledWith({ attachment: IMAGE, prompt: renderVisionPrompt('button color?') })
     expect(context.records).toEqual([expect.objectContaining({ origin: 'message', attachment: IMAGE, result: 'green button' })])
   })
@@ -89,7 +106,9 @@ describe('MixedAdapter', () => {
     expect(delegated).toHaveBeenCalledWith(expect.objectContaining({
       provider: 'base', model: 'chat',
       messages: [expect.objectContaining({ content: [expect.objectContaining({
-        type: 'tool-result', content: [{ type: 'text', text: expect.stringContaining('Bridge GPT') }],
+        type: 'tool-result', content: [{
+          type: 'text', text: expect.stringContaining(`attachment_id: sha256:${'b'.repeat(64)}`),
+        }],
       })] })],
     }))
   })

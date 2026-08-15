@@ -36,6 +36,12 @@ Bridge GPT 设置只保存三个模型引用：
 
 每一次真实图片模型调用产生一条记录，来源为 `message`、`tool` 或 `tool-result`；针对最近图片的后续追问也会产生一条使用新提示词的 `message` 记录。记录包含会话 id、时间、完整输入提示词、attachment、图片模型、耗时、结果或错误。侧边栏只查询当前 `sessionId`，按日期分组并以时间倒序显示；记录卡片默认折叠为摘要，展开后才显示提示词、预览和完整结果，卡片列表在侧边栏内容区域内独立滚动。
 
+## 附件定位
+
+用户上传图片以 `ImageAttachmentRef` 进入会话：`attachmentId` 是内容寻址的 `sha256:` opaque id，旁边带经过验证的媒体类型、字节数、宽高和可选原文件名。原始 `user/message` 持久化这个结构化引用。`Mix` 向文本基础模型映射图片块时不会再静默删除，而是替换为 `<image-attachment>` 文本，包含 attachment id、`dsh-attachment://` 逻辑定位符及元数据；识图后的 `<img-caption>` 也重复同一身份并明确说明视觉后端已经读取真实附件字节。
+
+物理路径不属于引用协议。默认 local provider 位于 `<DSH_HOME>/attachments/v1/objects/`，但会话不持久化该路径，避免泄露宿主布局或在 home 迁移、远程 provider 下留下失效地址。侧边栏从调用记录解析 attachment metadata，并额外显示会话和 call 双重授权的预览 URL。`bridge_gpt_attachment_query` 只在当前会话的调用记录中按 attachment id 查找引用，因此模型可以再次读取像素而不能越权枚举其他会话附件。
+
 ## 扩展其他识图 API
 
 编排层只依赖 `VisionBackend`。当前 `LlmVisionBackend` 通过 Harness 的 `ctx.llm.stream()` 调用全局模型注册表，所以新增识图服务的常规方式是在“设置 → 模型”增加 provider/model，并声明图片能力，而不是修改本插件。如果将来需要非 LLM 协议，可实现新的 `VisionBackend`，其余消息处理、工具 hook、会话记录和 Web UI 不变。

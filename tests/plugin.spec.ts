@@ -62,6 +62,10 @@ describe('Bridge GPT host plugin', () => {
     })
     const listeners = new Map<string, unknown>()
     const routes: string[] = []
+    const registeredTools: Array<{
+      name: string
+      execute(args: Record<string, string>, exec: ToolExecution): Promise<unknown>
+    }> = []
     let adapter: { stream(options: GenerateOptions): AsyncIterable<StreamChunk> } | undefined
     const append = vi.spyOn(CallHistory.prototype, 'append').mockResolvedValue()
     const ctx = {
@@ -72,7 +76,7 @@ describe('Bridge GPT host plugin', () => {
         listModels: async () => [],
       },
       on(event: string, listener: unknown) { listeners.set(event, listener); return () => undefined },
-      tools: { register: () => () => undefined },
+      tools: { register: (tool: typeof registeredTools[number]) => { registeredTools.push(tool); return () => undefined } },
       attachments: {
         readImage: async (ref: typeof attachment) => ({ ref, data: new Uint8Array([1, 2, 3]) }),
         saveImage: async () => attachment,
@@ -162,6 +166,22 @@ describe('Bridge GPT host plugin', () => {
     await expect(listener(exec, textResult, async () => ({ kind: 'accept' }))).resolves.toEqual({ kind: 'accept' })
     expect(stream).toHaveBeenCalledTimes(3)
     expect(routes).toEqual(['/bridge-gpt/calls', '/bridge-gpt/image', '/bridge-gpt/settings', '/bridge-gpt/models'])
+    expect(registeredTools.map(tool => tool.name)).toEqual(['bridge_gpt_image_query', 'bridge_gpt_attachment_query'])
+
+    vi.spyOn(CallHistory.prototype, 'list').mockResolvedValue([{
+      id: CallId('stored-image'), sessionId: agent.id, createdAt: 1, durationMs: 1,
+      origin: 'message', backendId: 'vision', model: 'see', prompt: 'first question', attachment,
+      status: 'success', title: 'screen', result: 'visible login error',
+    }])
+    const attachmentQuery = registeredTools.find(tool => tool.name === 'bridge_gpt_attachment_query')
+    if (attachmentQuery === undefined) throw new Error('attachment query tool was not registered')
+    await expect(attachmentQuery.execute({
+      attachment_id: String(attachment.attachmentId), question: 'What text is visible?',
+    }, exec)).resolves.toBe('visible login error')
+    expect(stream).toHaveBeenCalledTimes(4)
+    expect(append).toHaveBeenLastCalledWith(expect.objectContaining({
+      origin: 'tool', attachment, prompt: expect.stringContaining('What text is visible?'),
+    }))
   })
 
   it('shows the follow-up immediately, then re-analyzes the latest image with its new question', async () => {

@@ -3,7 +3,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { Button, IconChevronDownOutline14, Menu, type MenuEntry } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createElement, useEffect, useState, type ReactNode } from 'react'
 import type { ModelRoute, ResolvedConfig } from '../config.ts'
-import { callsUrl, groupCalls, imageUrl, parseCallsPayload, type VisionCallView } from './model.ts'
+import { attachmentLocator, callsUrl, groupCalls, imageUrl, parseCallsPayload, type VisionCallView } from './model.ts'
 import {
   parseModelCatalog, parseRouteValue, parseSettingsPayload, routeValue,
   type BridgeSettingsPayload, type ModelCatalogPayload, type SelectableModelGroupView,
@@ -236,10 +236,18 @@ function BridgeSettingsView(): ReactNode {
 
 type SessionCall = VisionCallView & { sessionId: string }
 
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KiB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MiB`
+}
+
 function callDetail(call: SessionCall): ReactNode {
   const result = call.status === 'success' ? call.result : call.error
   const title = call.status === 'success' ? call.title : '识图失败'
   const url = imageUrl(call.sessionId, call.id)
+  const locator = attachmentLocator(call.attachment.attachmentId)
+  const attachmentName = call.attachment.name ?? '未命名图片'
   return createElement('details', { key: call.id, className: css.callCard },
     createElement('summary', { className: css.callSummary },
       createElement('span', { className: css.summaryTitle }, title),
@@ -248,11 +256,19 @@ function callDetail(call: SessionCall): ReactNode {
       createElement('span', { className: css.summaryModel }, `${call.backendId}/${call.model} · ${call.durationMs}ms`),
       createElement('span', { className: css.summaryPreview }, result)),
     createElement('div', { className: css.callBody },
+      createElement('div', { className: css.detailLabel }, '图片定位'),
+      createElement('div', { className: css.attachmentInfo },
+        createElement('div', { className: css.attachmentName }, attachmentName),
+        createElement('code', { className: css.attachmentLocator, title: locator }, locator),
+        createElement('div', { className: css.attachmentMeta },
+          `${call.attachment.mediaType} · ${call.attachment.width}×${call.attachment.height} · ${formatBytes(call.attachment.bytes)}`),
+        createElement('a', { className: css.previewAddress, href: url, target: '_blank', rel: 'noreferrer' },
+          `当前会话预览：${url}`)),
       createElement('div', { className: css.detailLabel }, '输入提示词'),
       createElement('pre', { className: css.prompt }, call.prompt),
       createElement('a', { className: css.imageLink, href: url, target: '_blank', rel: 'noreferrer' },
         createElement('img', {
-          className: css.image, src: url, alt: call.status === 'success' ? call.title : '识图请求图片', loading: 'lazy',
+          className: css.image, src: url, alt: call.status === 'success' ? call.title : attachmentName, loading: 'lazy',
         })),
       createElement('div', { className: css.detailLabel }, call.status === 'success' ? '解析结果' : '请求错误'),
       createElement('div', { className: call.status === 'success' ? css.result : css.resultError }, result)))

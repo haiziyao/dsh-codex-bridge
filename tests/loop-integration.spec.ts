@@ -49,7 +49,10 @@ describe('Mix agent-loop integration', () => {
       if (options.sessionId === undefined) throw new Error('missing session id')
       const agent = ctx.agents.get(options.sessionId)
       if (agent === undefined) throw new Error('missing live agent')
-      agent.steer(createAnalysisContext('页面', '图片中有一个绿色按钮。'))
+      agent.steer(createAnalysisContext('页面', '图片中有一个绿色按钮。', {
+        attachmentId: AttachmentId(`sha256:${'f'.repeat(64)}`), mediaType: 'image/png',
+        bytes: 3, width: 1, height: 1, name: 'screen.png',
+      }))
       return true
     }))
 

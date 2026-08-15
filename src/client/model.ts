@@ -1,3 +1,13 @@
+/** Browser-safe metadata and locator source for one stored image. */
+export interface VisionAttachmentView {
+  attachmentId: string
+  mediaType: 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif'
+  bytes: number
+  width: number
+  height: number
+  name?: string
+}
+
 /** Browser projection of one session-scoped vision call. */
 export type VisionCallView = {
   id: string
@@ -7,6 +17,7 @@ export type VisionCallView = {
   backendId: string
   model: string
   prompt: string
+  attachment: VisionAttachmentView
 } & (
   | { status: 'success'; title: string; result: string }
   | { status: 'error'; error: string }
@@ -46,6 +57,21 @@ export function parseCallsPayload(payload: unknown): VisionCallView[] {
   return root.calls.map((value, index) => {
     const where = `calls[${index}]`
     const item = object(value, where)
+    const rawAttachment = object(item.attachment, `${where}.attachment`)
+    const mediaType: VisionAttachmentView['mediaType'] = rawAttachment.mediaType === 'image/png' || rawAttachment.mediaType === 'image/jpeg'
+      || rawAttachment.mediaType === 'image/webp' || rawAttachment.mediaType === 'image/gif'
+      ? rawAttachment.mediaType
+      : (() => { throw new TypeError(`bridge-gpt: ${where}.attachment.mediaType is invalid`) })()
+    const attachment: VisionAttachmentView = {
+      attachmentId: text(rawAttachment.attachmentId, `${where}.attachment.attachmentId`),
+      mediaType,
+      bytes: integer(rawAttachment.bytes, `${where}.attachment.bytes`),
+      width: integer(rawAttachment.width, `${where}.attachment.width`),
+      height: integer(rawAttachment.height, `${where}.attachment.height`),
+      ...(rawAttachment.name === undefined
+        ? {}
+        : { name: text(rawAttachment.name, `${where}.attachment.name`) }),
+    }
     const origin: 'message' | 'tool' | 'tool-result' = item.origin === 'message' || item.origin === 'tool' || item.origin === 'tool-result'
       ? item.origin
       : (() => { throw new TypeError(`bridge-gpt: ${where}.origin is invalid`) })()
@@ -57,6 +83,7 @@ export function parseCallsPayload(payload: unknown): VisionCallView[] {
       backendId: text(item.backendId, `${where}.backendId`),
       model: text(item.model, `${where}.model`),
       prompt: text(item.prompt, `${where}.prompt`),
+      attachment,
     }
     if (item.status === 'success') {
       return {
@@ -71,6 +98,11 @@ export function parseCallsPayload(payload: unknown): VisionCallView[] {
     }
     throw new TypeError(`bridge-gpt: ${where}.status is invalid`)
   })
+}
+
+/** Build the stable logical locator shown for one opaque attachment id. */
+export function attachmentLocator(attachmentId: string): string {
+  return `dsh-attachment://${encodeURIComponent(attachmentId)}`
 }
 
 /** Build the read-only call-list URL for one session. */
