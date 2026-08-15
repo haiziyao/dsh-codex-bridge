@@ -1,7 +1,7 @@
 {
-  "name": "dsh-codex-bridge",
-  "version": "0.1.5",
-  "description": "A DeepSeek Harness plugin that routes text to a base model and images to a configured vision model.",
+  "name": "dsh-vision-mix",
+  "version": "0.2.0",
+  "description": "A DeepSeek Harness Mix plugin for vision routing plus GPT Image generation and editing.",
   "type": "module",
   "main": "lib/index.js",
   "types": "lib/types/index.d.ts",
@@ -56,18 +56,20 @@
   "keywords": [
     "deepseek-harness",
     "dsh-plugin",
-    "codex",
     "vision",
-    "multimodal"
+    "vision-agent",
+    "multimodal",
+    "image-generation",
+    "gpt-image-2"
   ],
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/haiziyao/dsh-codex-bridge.git"
+    "url": "git+https://github.com/haiziyao/dsh-vision-mix.git"
   },
-  "homepage": "https://github.com/haiziyao/dsh-codex-bridge#readme",
+  "homepage": "https://github.com/haiziyao/dsh-vision-mix#readme",
   "bugs": {
-    "url": "https://github.com/haiziyao/dsh-codex-bridge/issues"
+    "url": "https://github.com/haiziyao/dsh-vision-mix/issues"
   },
   "dependencies": {
     "@deepseek-ai/schemastery": "latest"
@@ -79,6 +81,7 @@
     "@deepseek-ai/dsh-client-ui-primitives": "*",
     "@deepseek-ai/dsh-client-ui-settings": "*",
     "@deepseek-ai/dsh-client-ui-slots": "*",
+    "@deepseek-ai/dsh-credentials": "*",
     "@deepseek-ai/dsh-home-paths": "*",
     "@deepseek-ai/dsh-host-webserver": "*",
     "@deepseek-ai/dsh-llm": "*",
@@ -96,6 +99,7 @@
     "@deepseek-ai/dsh-client-ui-primitives": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-settings": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-ui-slots": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-credentials": "0.1.0-rc.6",
     "@deepseek-ai/dsh-brand": "0.1.0-rc.6",
     "@deepseek-ai/dsh-client-runtime": "0.1.0-rc.6",
     "@deepseek-ai/dsh-code-runtime": "0.1.0-rc.6",

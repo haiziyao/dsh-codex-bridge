@@ -2,7 +2,7 @@ import { settingsNamespace, type SettingsPathOp } from '@deepseek-ai/dsh-setting
 import { resolveConfig, type Config, type ResolvedConfig } from './config.ts'
 
 /** Persistent settings namespace owned by this plugin. */
-export const BRIDGE_GPT_SETTINGS_NAMESPACE = settingsNamespace('bridge-gpt')
+export const VISION_MIX_SETTINGS_NAMESPACE = settingsNamespace('vision-mix')
 
 interface SettingsDescriptorLike {
   ns: string
@@ -16,7 +16,7 @@ interface SettingsAccess {
 }
 
 /** Routing configuration returned to the browser settings page. */
-export interface BridgeSettingsView {
+export interface VisionMixSettingsView {
   available: boolean
   writable: boolean
   revision: number
@@ -38,9 +38,9 @@ export interface SettingsControllerDependencies {
 /** Build the model-reference-only settings operations used by the HTTP route. */
 export function createSettingsController(dependencies: SettingsControllerDependencies) {
   return {
-    describe(): BridgeSettingsView {
+    describe(): VisionMixSettingsView {
       const descriptor = dependencies.settings.describe({ redactSecrets: true })
-        .find(item => item.ns === BRIDGE_GPT_SETTINGS_NAMESPACE)
+        .find(item => item.ns === VISION_MIX_SETTINGS_NAMESPACE)
       return {
         available: descriptor !== undefined,
         writable: dependencies.settings.writable,
@@ -51,10 +51,10 @@ export function createSettingsController(dependencies: SettingsControllerDepende
 
     async updateRouting(input: RoutingSettingsUpdate): Promise<void> {
       if (!Number.isSafeInteger(input.revision) || input.revision < 0) {
-        throw new TypeError('bridge-gpt: settings revision must be a non-negative safe integer')
+        throw new TypeError('vision-mix: settings revision must be a non-negative safe integer')
       }
       const routing = resolveConfig(input.routing)
-      await dependencies.settings.mutate(BRIDGE_GPT_SETTINGS_NAMESPACE, [{
+      await dependencies.settings.mutate(VISION_MIX_SETTINGS_NAMESPACE, [{
         op: 'set',
         path: [],
         value: routing,

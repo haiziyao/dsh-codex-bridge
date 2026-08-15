@@ -42,9 +42,9 @@ describe('client history model', () => {
   })
 
   it('builds session-specific list and preview URLs', () => {
-    expect(callsUrl('session/a b')).toBe('/bridge-gpt/calls?sessionId=session%2Fa%20b')
+    expect(callsUrl('session/a b')).toBe('/vision-mix/calls?sessionId=session%2Fa%20b')
     expect(imageUrl('session/a b', 'call/#1')).toBe(
-      '/bridge-gpt/image/call%2F%231?sessionId=session%2Fa%20b',
+      '/vision-mix/image/call%2F%231?sessionId=session%2Fa%20b',
     )
     expect(attachmentLocator('sha256:abc')).toBe('dsh-attachment://sha256%3Aabc')
   })

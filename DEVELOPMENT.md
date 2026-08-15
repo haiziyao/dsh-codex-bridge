@@ -1,6 +1,6 @@
 # 开发说明
 
-本文面向需要从源码安装、调试或发布 `dsh-codex-bridge` 的维护者。普通用户请从 [README.md](README.md) 开始。
+本文面向需要从源码安装、调试或发布 `dsh-vision-mix` 的维护者。普通用户请从 [README.md](README.md) 开始。
 
 ## 环境要求
 
@@ -13,7 +13,7 @@
 在 DeepSeek Harness 仓库目录执行：
 
 ```powershell
-pnpm dsh web --patch ../dsh-codex-bridge/dsh-patch.yml
+pnpm dsh web --patch ../dsh-vision-mix/dsh-patch.yml
 ```
 
 打开 <http://127.0.0.1:3080>，在模型选择器中选择 `Mix`。
@@ -27,20 +27,20 @@ pnpm dsh web --patch ../dsh-codex-bridge/dsh-patch.yml
 在 DeepSeek Harness 仓库目录执行：
 
 ```powershell
-pnpm dsh plugin --profile web add ../dsh-codex-bridge
+pnpm dsh plugin --profile web add ../dsh-vision-mix
 ```
 
 ## 从 GitHub 源码安装
 
 ```powershell
-pnpm dsh plugin --profile web add github:haiziyao/dsh-codex-bridge
+pnpm dsh plugin --profile web add github:haiziyao/dsh-vision-mix
 ```
 
 Git 源安装会通过 `prepare` 脚本构建服务端和 Web 客户端。按照 DSH 和 pnpm 10 及以上的安全策略，首次安装可能停止并打印一条完整的 `allowBuilds` 键。把错误中给出的键原样加入 `%USERPROFILE%\.dsh\profiles\web\pnpm-workspace.yaml`，再重新执行安装命令。
 
 ```yaml
 allowBuilds:
-  'dsh-codex-bridge@https://codeload.github.com/...': true
+  'dsh-vision-mix@https://codeload.github.com/...': true
 ```
 
 必须使用 pnpm 输出的完整 URL 和 commit 键，不能直接复制上面的省略示例。
@@ -81,8 +81,8 @@ git push origin main "v$version"
 
 Trusted Publisher 必须绑定以下信息：
 
-- GitHub 仓库：`haiziyao/dsh-codex-bridge`
+- GitHub 仓库：`haiziyao/dsh-vision-mix`
 - Workflow：`publish.yml`
-- npm 包：`dsh-codex-bridge`
+- npm 包：`dsh-vision-mix`
 
 标签与 `package.json` 版本不一致时，工作流会拒绝发布。

@@ -77,7 +77,7 @@ describe('analyzeMessageImages', () => {
       content: [{ type: 'text', text: 'button color?' }, { type: 'image', attachment: IMAGE }], source: { kind: 'user' },
     })
     const result = await analyzeMessageImages({ sessionId: SessionId('s'), messages: [message] }, context.dependencies)
-    expect(result[0]).toMatchObject({ source: { kind: 'plugin', plugin: 'bridge-gpt' }, content: [{ type: 'text', text: expect.stringContaining('green button') }] })
+    expect(result[0]).toMatchObject({ source: { kind: 'plugin', plugin: 'vision-mix' }, content: [{ type: 'text', text: expect.stringContaining('green button') }] })
     expect(result[0]?.content[0]).toMatchObject({
       type: 'text', text: expect.stringContaining(`attachment_id: sha256:${'b'.repeat(64)}`),
     })
@@ -100,9 +100,9 @@ describe('MixedAdapter', () => {
       }],
       source: { kind: 'plugin', plugin: 'test' },
     })
-    expect(adapter.providerInfo('bridge-gpt').name).toBe('Mix')
-    expect((await adapter.listModels('bridge-gpt'))[0]?.name).toBe('Mix')
-    for await (const _chunk of adapter.stream({ provider: 'bridge-gpt', model: 'mix', messages: [message] })) {}
+    expect(adapter.providerInfo('vision-mix').name).toBe('Mix')
+    expect((await adapter.listModels('vision-mix'))[0]?.name).toBe('Mix')
+    for await (const _chunk of adapter.stream({ provider: 'vision-mix', model: 'mix', messages: [message] })) {}
     expect(delegated).toHaveBeenCalledWith(expect.objectContaining({
       provider: 'base', model: 'chat',
       messages: [expect.objectContaining({ content: [expect.objectContaining({
@@ -119,7 +119,7 @@ describe('MixedAdapter', () => {
     const config = resolveConfig({ baseModel: { provider: 'base', model: 'chat' } })
     const adapter = new MixedAdapter({ llm: { stream: delegated } } as unknown as Context, () => config, defer)
     const chunks = []
-    for await (const chunk of adapter.stream({ provider: 'bridge-gpt', model: 'mix', messages: [] })) chunks.push(chunk)
+    for await (const chunk of adapter.stream({ provider: 'vision-mix', model: 'mix', messages: [] })) chunks.push(chunk)
     expect(defer).toHaveBeenCalledOnce()
     expect(delegated).not.toHaveBeenCalled()
     expect(chunks).toEqual([{ type: 'finish', reason: { kind: 'stop' } }])

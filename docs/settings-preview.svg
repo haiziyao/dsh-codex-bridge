@@ -1,10 +1,10 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="680" viewBox="0 0 1200 680" role="img" aria-labelledby="title desc">
-  <title id="title">Bridge GPT settings preview</title>
-  <desc id="desc">Dark DeepSeek Harness settings panel with Bridge GPT selected and bridge icons in navigation and heading.</desc>
-  <rect width="1200" height="680" rx="28" fill="#18191c"/>
-  <rect x="22" y="22" width="1156" height="636" rx="22" fill="#232428" stroke="#35363b"/>
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="900" viewBox="0 0 1200 900" role="img" aria-labelledby="title desc">
+  <title id="title">Vision Mix settings preview</title>
+  <desc id="desc">Dark DeepSeek Harness settings panel with Vision Mix selected and bridge icons in navigation and heading.</desc>
+  <rect width="1200" height="900" rx="28" fill="#18191c"/>
+  <rect x="22" y="22" width="1156" height="856" rx="22" fill="#232428" stroke="#35363b"/>
   <text x="54" y="74" fill="#f5f6f8" font-family="Segoe UI, sans-serif" font-size="25" font-weight="700">设置</text>
-  <line x1="270" y1="22" x2="270" y2="658" stroke="#36373d"/>
+  <line x1="270" y1="22" x2="270" y2="878" stroke="#36373d"/>
   <g font-family="Segoe UI, sans-serif" font-size="19" fill="#d5d7dc">
     <text x="78" y="140">通用设置</text><text x="78" y="202">模型</text><text x="78" y="264">插件</text>
   </g>
@@ -13,8 +13,8 @@
   <g transform="translate(42 243)" fill="none" stroke="#aeb2bb" stroke-width="2"><path d="M2 5h16M2 10h16M2 15h16"/><circle cx="7" cy="5" r="2" fill="#aeb2bb"/></g>
   <rect x="32" y="291" width="218" height="56" rx="12" fill="#484b53"/>
   <g transform="translate(44 306)" fill="none" stroke="#fff" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M0 20h24M2 20v-5M22 20v-5M2 15h20M5 15c0-7 3-11 9-11s9 4 9 11M8 15V7M17 15V7M0 24h24"/></g>
-  <text x="82" y="327" fill="#fff" font-family="Segoe UI, sans-serif" font-size="19" font-weight="600">Bridge GPT</text>
-  <text x="316" y="77" fill="#f7f8fa" font-family="Segoe UI, sans-serif" font-size="28" font-weight="700">Bridge GPT</text>
+  <text x="82" y="327" fill="#fff" font-family="Segoe UI, sans-serif" font-size="19" font-weight="600">Vision Mix</text>
+  <text x="316" y="77" fill="#f7f8fa" font-family="Segoe UI, sans-serif" font-size="28" font-weight="700">Vision Mix</text>
   <g transform="translate(282 50)" fill="none" stroke="#f7f8fa" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M0 20h25M2 20v-5M23 20v-5M2 15h21M5 15c0-7 3-11 9-11s9 4 9 11M8 15V7M18 15V7M0 24h25"/></g>
   <text x="282" y="116" fill="#9fa3ad" font-family="Segoe UI, sans-serif" font-size="16">Mix 使用“设置 → 模型”中已经配置好的模型，不重复保存 API 地址或密钥。</text>
   <rect x="282" y="150" width="850" height="394" rx="16" fill="#2b2c31" stroke="#3a3c42"/>
@@ -30,6 +30,13 @@
   <path d="M1070 417l7 7 7-7" fill="none" stroke="#b7bac2" stroke-width="2"/>
   <line x1="312" y1="485" x2="1102" y2="485" stroke="#42444a"/>
   <text x="330" y="518" fill="#cdd0d6" font-family="Segoe UI, sans-serif" font-size="15" font-weight="600">›  高级设置</text>
-  <rect x="282" y="570" width="132" height="48" rx="12" fill="#497cff"/>
-  <text x="316" y="601" fill="#fff" font-family="Segoe UI, sans-serif" font-size="17" font-weight="650">保存路由</text>
+  <rect x="282" y="570" width="850" height="210" rx="16" fill="#2b2c31" stroke="#3a3c42"/>
+  <text x="312" y="612" fill="#f4f5f7" font-family="Segoe UI, sans-serif" font-size="20" font-weight="650">图片生成与编辑</text>
+  <text x="312" y="641" fill="#8f939d" font-family="Segoe UI, sans-serif" font-size="14">Provider、Base URL 和凭据复用“设置 → 模型”，不会重复保存 API Key。</text>
+  <text x="312" y="686" fill="#cdd0d6" font-family="Segoe UI, sans-serif" font-size="15" font-weight="600">图片生成模型</text>
+  <rect x="312" y="701" width="790" height="48" rx="10" fill="#222328" stroke="#4a4c53"/>
+  <text x="330" y="731" fill="#f2f3f5" font-family="Segoe UI, sans-serif" font-size="16">gpt-image-2 (OpenAI / openai)</text>
+  <path d="M1070 720l7 7 7-7" fill="none" stroke="#b7bac2" stroke-width="2"/>
+  <rect x="282" y="810" width="132" height="48" rx="12" fill="#497cff"/>
+  <text x="316" y="841" fill="#fff" font-family="Segoe UI, sans-serif" font-size="17" font-weight="650">保存路由</text>
 </svg>

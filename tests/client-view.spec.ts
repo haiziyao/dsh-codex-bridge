@@ -9,12 +9,12 @@ import { apply } from '../src/client/index.ts'
 type SidebarComponent = ComponentType<{ scope: { sessionId: string } }>
 type SettingsComponent = ComponentType
 
-function registeredViews(): { sidebar: SidebarComponent; settings: SettingsComponent } {
-  let sidebar: SidebarComponent | undefined
+function registeredViews(): { visionSidebar: SidebarComponent; generationSidebar: SidebarComponent; settings: SettingsComponent } {
+  const sidebars = new Map<string, SidebarComponent>()
   let settings: SettingsComponent | undefined
   const ctx = {
     betterSidebar: {
-      registerTab(tab: { component: SidebarComponent }) { sidebar = tab.component; return () => undefined },
+      registerTab(tab: { id: string; component: SidebarComponent }) { sidebars.set(tab.id, tab.component); return () => undefined },
     },
     slots: {
       inject(_name: string, register: () => unknown) { register() },
@@ -30,8 +30,10 @@ function registeredViews(): { sidebar: SidebarComponent; settings: SettingsCompo
     },
   } as unknown as Context
   apply(ctx)
-  if (sidebar === undefined || settings === undefined) throw new Error('Bridge GPT views were not registered')
-  return { sidebar, settings }
+  const visionSidebar = sidebars.get('vision-mix:vision-calls')
+  const generationSidebar = sidebars.get('vision-mix:generation-calls')
+  if (visionSidebar === undefined || generationSidebar === undefined || settings === undefined) throw new Error('Vision Mix views were not registered')
+  return { visionSidebar, generationSidebar, settings }
 }
 
 function json(value: unknown): Response {
@@ -43,17 +45,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-describe('Bridge GPT browser views', () => {
+describe('Vision Mix browser views', () => {
   it('uses the themed menu primitive instead of a native select', async () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(async input => {
       const url = String(input)
-      if (url.endsWith('/bridge-gpt/settings')) {
+      if (url.endsWith('/vision-mix/settings')) {
         return json({
           available: true, writable: true, revision: 0,
           routing: {
             baseModel: { provider: 'deepseek', model: 'chat' },
             imageModel: { provider: 'vision', model: 'see' },
             autoAnalyzeToolImages: true,
+            generationDefaults: { size: 'auto', quality: 'auto', outputFormat: 'png' },
           },
         })
       }
@@ -62,6 +65,7 @@ describe('Bridge GPT browser views', () => {
           { id: 'deepseek', name: 'DeepSeek', models: [{ id: 'chat', name: 'Chat', inputModalities: ['text'] }] },
           { id: 'vision', name: 'Vision', models: [{ id: 'see', name: 'See', inputModalities: ['text', 'image'] }] },
         ],
+        generationProviders: [{ id: 'openai', name: 'OpenAI' }],
         failures: [],
       })
     })
@@ -86,7 +90,7 @@ describe('Bridge GPT browser views', () => {
         prompt: 'full preprocessing prompt', status: 'success', title: '角色识别', result: '最可能是测试角色。',
       }],
     }))
-    const { sidebar: Sidebar } = registeredViews()
+    const { visionSidebar: Sidebar } = registeredViews()
     const view = render(createElement(Sidebar, { scope: { sessionId: 'session-1' } }))
     const summary = await screen.findByText('角色识别')
     const details = summary.closest('details')
@@ -99,5 +103,73 @@ describe('Bridge GPT browser views', () => {
     expect(screen.getByText(`dsh-attachment://sha256%3A${'a'.repeat(64)}`)).toBeTruthy()
     expect(screen.getByText('image/png · 1280×720 · 2.0 KiB')).toBeTruthy()
     await waitFor(() => expect(view.container.firstElementChild?.className).toContain('historyRoot'))
+  })
+
+  it('runs automatic vision onboarding and tests a separate image generation Provider', async () => {
+    const requests: Array<{ url: string; body?: unknown }> = []
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
+      const url = String(input)
+      if (url.endsWith('/vision-mix/vision-setup')) {
+        requests.push({ url, body: JSON.parse(String(init?.body)) })
+        return json({
+          action: 'auto', route: { provider: 'relay', model: 'vision' }, imageEnabled: true,
+          selected: true, message: '真实图片测试通过', response: 'red',
+        })
+      }
+      if (url.endsWith('/vision-mix/generation-setup')) {
+        requests.push({ url, body: JSON.parse(String(init?.body)) })
+        return json({
+          route: { provider: 'images', model: 'gpt-image-2' }, message: '生图 API 测试通过',
+          mediaType: 'image/png', bytes: 3,
+          previewDataUrl: 'data:image/png;base64,AQID',
+        })
+      }
+      if (url.endsWith('/vision-mix/settings')) return json({
+        available: true, writable: true, revision: 1,
+        routing: {
+          baseModel: { provider: 'relay', model: 'chat' }, imageModel: { provider: 'relay', model: 'vision' },
+          autoAnalyzeToolImages: true, generationModel: { provider: 'images', model: 'gpt-image-2' },
+          generationDefaults: { size: 'auto', quality: 'auto', outputFormat: 'png' },
+        },
+      })
+      return json({
+        groups: [{ id: 'relay', name: 'Relay', models: [
+          { id: 'chat', name: 'Chat', inputModalities: ['text'] },
+          { id: 'vision', name: 'Vision', inputModalities: ['text'] },
+        ] }],
+        generationProviders: [{ id: 'images', name: 'Images Relay' }], failures: [],
+      })
+    })
+    const { settings: Settings } = registeredViews()
+    render(createElement(Settings))
+    fireEvent.click(await screen.findByRole('button', { name: '一键测试并配置' }))
+    expect(await screen.findByText('真实图片测试通过')).toBeTruthy()
+    expect(requests[0]?.body).toEqual({ action: 'auto', route: { provider: 'relay', model: 'vision' } })
+
+    fireEvent.click(screen.getByRole('button', { name: '测试生图 API' }))
+    expect(await screen.findByRole('img', { name: '生图 API 测试结果' })).toBeTruthy()
+    expect(requests[1]?.body).toEqual({ route: { provider: 'images', model: 'gpt-image-2' } })
+  })
+
+  it('renders generation history separately with source and output attachments', async () => {
+    const sourceId = `sha256:${'b'.repeat(64)}`
+    const outputId = `sha256:${'c'.repeat(64)}`
+    vi.spyOn(globalThis, 'fetch').mockResolvedValue(json({
+      generations: [{
+        id: 'generation-1', createdAt: 1_700_000_000_000, durationMs: 9000,
+        operation: 'edit', backendId: 'openai-images', model: 'gpt-image-2',
+        prompt: '改成夜景', size: '1536x1024', quality: 'high', outputFormat: 'png', status: 'success',
+        sourceAttachments: [{ attachmentId: sourceId, mediaType: 'image/png', bytes: 1024, width: 1024, height: 1024 }],
+        outputAttachment: { attachmentId: outputId, mediaType: 'image/png', bytes: 2048, width: 1536, height: 1024, name: 'night.png' },
+      }],
+    }))
+    const { generationSidebar: Sidebar } = registeredViews()
+    render(createElement(Sidebar, { scope: { sessionId: 'session-1' } }))
+    const summary = await screen.findByText('编辑图片')
+    fireEvent.click(summary.closest('summary')!)
+    expect(screen.getAllByText('改成夜景')).toHaveLength(2)
+    expect(screen.getByText('night.png')).toBeTruthy()
+    expect(screen.getByText(`dsh-attachment://sha256%3A${'b'.repeat(64)}`)).toBeTruthy()
+    expect(screen.getByRole('img', { name: '改成夜景' })).toBeTruthy()
   })
 })

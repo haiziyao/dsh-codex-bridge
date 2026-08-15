@@ -14,9 +14,19 @@ export interface VisionAnalyzeResult {
   raw: string
 }
 
-/** Protocol-independent image-analysis backend used by bridge orchestration. */
+/** Protocol-independent image-analysis backend used by Mix orchestration. */
 export interface VisionBackend {
   readonly id: string
   readonly model: string
   analyze(request: VisionAnalyzeRequest): Promise<VisionAnalyzeResult>
+}
+
+/** Image backend used until onboarding selects a real model route. */
+export class UnconfiguredVisionBackend implements VisionBackend {
+  readonly id = 'unconfigured'
+  readonly model = 'unconfigured'
+
+  async analyze(_request: VisionAnalyzeRequest): Promise<never> {
+    throw new Error('vision-mix: no image model is configured; open Settings → Vision Mix → 识图模型接入')
+  }
 }

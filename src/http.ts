@@ -1,6 +1,10 @@
 import type { ImageAttachmentRef, StoredImageAttachment } from '@deepseek-ai/dsh-attachment'
 import { SessionId, type SessionId as SessionIdType } from '@deepseek-ai/dsh-session'
 import { CallId, type CallId as CallIdType, type VisionCallRecord } from './history.ts'
+import { GenerationId, type GenerationId as GenerationIdType, type GenerationRecord } from './generation-history.ts'
+import type { ModelRoute } from './config.ts'
+import type { VisionSetupResult } from './vision-setup.ts'
+import type { GenerationSetupResult } from './generation-setup.ts'
 
 /** Minimal request fields used by the read-only routes. */
 export interface HttpRequest {
@@ -20,6 +24,28 @@ export interface SettingsController {
 export interface SettingsHandlers {
   settings(request: HttpRequest, response: HttpResponse): Promise<void>
   models(request: HttpRequest, response: HttpResponse): Promise<void>
+}
+
+/** Host workflow used by the Web image-capability setup controls. */
+export interface VisionSetupController {
+  test(route: ModelRoute): Promise<VisionSetupResult>
+  enable(route: ModelRoute): Promise<VisionSetupResult>
+  auto(route: ModelRoute): Promise<VisionSetupResult>
+}
+
+/** POST handler for test, forced enable, and automatic image setup. */
+export interface VisionSetupHandlers {
+  setup(request: HttpRequest, response: HttpResponse): Promise<void>
+}
+
+/** Host operation for probing an independently configured Images API route. */
+export interface GenerationSetupController {
+  test(route: ModelRoute): Promise<GenerationSetupResult>
+}
+
+/** POST handler for one low-quality image generation probe. */
+export interface GenerationSetupHandlers {
+  test(request: HttpRequest, response: HttpResponse): Promise<void>
 }
 
 /** Live model catalog supplied by the harness LLM registry. */
@@ -55,6 +81,23 @@ export interface HistoryHandlers {
   image(request: HttpRequest, response: HttpResponse): Promise<void>
 }
 
+interface GenerationReader {
+  list(sessionId: SessionIdType): Promise<GenerationRecord[]>
+  get(sessionId: SessionIdType, id: GenerationIdType): Promise<GenerationRecord | undefined>
+}
+
+/** Dependencies for session-scoped image generation history routes. */
+export interface GenerationHandlerDependencies {
+  history: GenerationReader
+  attachments: AttachmentReader
+}
+
+/** Read-only generation list and output-preview handlers. */
+export interface GenerationHandlers {
+  generations(request: HttpRequest, response: HttpResponse): Promise<void>
+  image(request: HttpRequest, response: HttpResponse): Promise<void>
+}
+
 function empty(response: HttpResponse, status: number, headers?: Record<string, string | number>): void {
   response.writeHead(status, headers)
   response.end()
@@ -72,23 +115,79 @@ async function jsonBody(request: HttpRequest): Promise<Record<string, unknown>> 
   const contentType = request.headers?.['content-type']
   const normalized = Array.isArray(contentType) ? contentType[0] : contentType
   if (normalized?.split(';', 1)[0]?.trim().toLowerCase() !== 'application/json') {
-    throw new TypeError('bridge-gpt: settings writes require application/json')
+    throw new TypeError('vision-mix: settings writes require application/json')
   }
   const iterator = request[Symbol.asyncIterator]
-  if (iterator === undefined) throw new TypeError('bridge-gpt: request body is unavailable')
+  if (iterator === undefined) throw new TypeError('vision-mix: request body is unavailable')
   const chunks: Uint8Array[] = []
   let bytes = 0
   for await (const chunk of { [Symbol.asyncIterator]: iterator.bind(request) }) {
     const data = typeof chunk === 'string' ? Buffer.from(chunk) : chunk
     bytes += data.byteLength
-    if (bytes > 128 * 1024) throw new TypeError('bridge-gpt: settings request exceeds 128 KiB')
+    if (bytes > 128 * 1024) throw new TypeError('vision-mix: settings request exceeds 128 KiB')
     chunks.push(data)
   }
   const parsed: unknown = JSON.parse(Buffer.concat(chunks).toString('utf8'))
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
-    throw new TypeError('bridge-gpt: settings request must be an object')
+    throw new TypeError('vision-mix: settings request must be an object')
   }
   return parsed as Record<string, unknown>
+}
+
+function modelRoute(value: unknown): ModelRoute {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    throw new TypeError('vision-mix: vision setup route must be an object')
+  }
+  const route = value as Record<string, unknown>
+  if (typeof route.provider !== 'string' || route.provider.trim().length === 0
+    || typeof route.model !== 'string' || route.model.trim().length === 0) {
+    throw new TypeError('vision-mix: vision setup provider and model must be non-empty')
+  }
+  return { provider: route.provider.trim(), model: route.model.trim() }
+}
+
+/** Build the write handler used by Vision Mix's image-model onboarding controls. */
+export function createVisionSetupHandlers(controller: VisionSetupController): VisionSetupHandlers {
+  return {
+    async setup(request, response): Promise<void> {
+      if (request.method !== 'POST') {
+        empty(response, 405, { allow: 'POST' })
+        return
+      }
+      try {
+        const body = await jsonBody(request)
+        const route = modelRoute(body.route)
+        const result = body.action === 'test'
+          ? await controller.test(route)
+          : body.action === 'enable'
+            ? await controller.enable(route)
+            : body.action === 'auto'
+              ? await controller.auto(route)
+              : (() => { throw new TypeError('vision-mix: vision setup action is invalid') })()
+        json(response, 200, result)
+      } catch (error: unknown) {
+        if (!response.headersSent) json(response, 400, { error: String(error) })
+      }
+    },
+  }
+}
+
+/** Build the configuration-time image generation test handler. */
+export function createGenerationSetupHandlers(controller: GenerationSetupController): GenerationSetupHandlers {
+  return {
+    async test(request, response): Promise<void> {
+      if (request.method !== 'POST') {
+        empty(response, 405, { allow: 'POST' })
+        return
+      }
+      try {
+        const body = await jsonBody(request)
+        json(response, 200, await controller.test(modelRoute(body.route)))
+      } catch (error: unknown) {
+        if (!response.headersSent) json(response, 400, { error: String(error) })
+      }
+    },
+  }
 }
 
 /** Build same-origin JSON handlers over persistent routing and the live model registry. */
@@ -142,7 +241,7 @@ export function createHistoryHandlers(dependencies: HistoryHandlerDependencies):
         empty(response, 405, { allow: 'GET' })
         return
       }
-      const url = new URL(request.url ?? '/', 'http://bridge-gpt.local')
+      const url = new URL(request.url ?? '/', 'http://vision-mix.local')
       const sessionId = requestedSession(url)
       if (sessionId === undefined) {
         empty(response, 400)
@@ -165,9 +264,9 @@ export function createHistoryHandlers(dependencies: HistoryHandlerDependencies):
         empty(response, 405, { allow: 'GET' })
         return
       }
-      const url = new URL(request.url ?? '/', 'http://bridge-gpt.local')
+      const url = new URL(request.url ?? '/', 'http://vision-mix.local')
       const sessionId = requestedSession(url)
-      const encoded = url.pathname.slice('/bridge-gpt/image/'.length)
+      const encoded = url.pathname.slice('/vision-mix/image/'.length)
       if (sessionId === undefined || encoded.length === 0) {
         empty(response, 400)
         return
@@ -186,6 +285,64 @@ export function createHistoryHandlers(dependencies: HistoryHandlerDependencies):
           return
         }
         const stored = await dependencies.attachments.readImage(record.attachment)
+        response.writeHead(200, {
+          'content-type': stored.ref.mediaType,
+          'content-length': stored.data.byteLength,
+          'cache-control': 'private, max-age=31536000, immutable',
+          'x-content-type-options': 'nosniff',
+        })
+        response.end(stored.data)
+      } catch {
+        if (!response.headersSent) empty(response, 500)
+      }
+    },
+  }
+}
+
+/** Build handlers whose output-image lookup is fenced by both session and operation id. */
+export function createGenerationHandlers(dependencies: GenerationHandlerDependencies): GenerationHandlers {
+  return {
+    async generations(request, response): Promise<void> {
+      if (request.method !== 'GET') {
+        empty(response, 405, { allow: 'GET' })
+        return
+      }
+      const sessionId = requestedSession(new URL(request.url ?? '/', 'http://vision-mix.local'))
+      if (sessionId === undefined) {
+        empty(response, 400)
+        return
+      }
+      try {
+        json(response, 200, { generations: await dependencies.history.list(sessionId) })
+      } catch {
+        if (!response.headersSent) empty(response, 500)
+      }
+    },
+
+    async image(request, response): Promise<void> {
+      if (request.method !== 'GET') {
+        empty(response, 405, { allow: 'GET' })
+        return
+      }
+      const url = new URL(request.url ?? '/', 'http://vision-mix.local')
+      const sessionId = requestedSession(url)
+      const encoded = url.pathname.slice('/vision-mix/generated-image/'.length)
+      if (sessionId === undefined || encoded.length === 0) {
+        empty(response, 400)
+        return
+      }
+      let id: GenerationIdType
+      try { id = GenerationId(decodeURIComponent(encoded)) } catch {
+        empty(response, 400)
+        return
+      }
+      try {
+        const record = await dependencies.history.get(sessionId, id)
+        if (record === undefined || record.status !== 'success') {
+          empty(response, 404)
+          return
+        }
+        const stored = await dependencies.attachments.readImage(record.outputAttachment)
         response.writeHead(200, {
           'content-type': stored.ref.mediaType,
           'content-length': stored.data.byteLength,

@@ -181,6 +181,42 @@
   gap: 8px;
 }
 
+.setupActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.probeResult {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+}
+
+.probeResult code {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.generationTestImage {
+  display: block;
+  width: min(100%, 320px);
+  max-height: 240px;
+  object-fit: contain;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
 .historyRoot {
   box-sizing: border-box;
   flex: 1;

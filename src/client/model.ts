@@ -31,21 +31,21 @@ export interface VisionCallGroup {
 
 function object(value: unknown, where: string): Record<string, unknown> {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
-    throw new TypeError(`bridge-gpt: ${where} must be an object`)
+    throw new TypeError(`vision-mix: ${where} must be an object`)
   }
   return value as Record<string, unknown>
 }
 
 function text(value: unknown, where: string): string {
   if (typeof value !== 'string' || value.length === 0) {
-    throw new TypeError(`bridge-gpt: ${where} must be a non-empty string`)
+    throw new TypeError(`vision-mix: ${where} must be a non-empty string`)
   }
   return value
 }
 
 function integer(value: unknown, where: string): number {
   if (!Number.isSafeInteger(value) || (value as number) < 0) {
-    throw new TypeError(`bridge-gpt: ${where} must be a non-negative safe integer`)
+    throw new TypeError(`vision-mix: ${where} must be a non-negative safe integer`)
   }
   return value as number
 }
@@ -53,7 +53,7 @@ function integer(value: unknown, where: string): number {
 /** Validate the host response and retain only fields rendered by the client. */
 export function parseCallsPayload(payload: unknown): VisionCallView[] {
   const root = object(payload, 'response')
-  if (!Array.isArray(root.calls)) throw new TypeError('bridge-gpt: response.calls must be an array')
+  if (!Array.isArray(root.calls)) throw new TypeError('vision-mix: response.calls must be an array')
   return root.calls.map((value, index) => {
     const where = `calls[${index}]`
     const item = object(value, where)
@@ -61,7 +61,7 @@ export function parseCallsPayload(payload: unknown): VisionCallView[] {
     const mediaType: VisionAttachmentView['mediaType'] = rawAttachment.mediaType === 'image/png' || rawAttachment.mediaType === 'image/jpeg'
       || rawAttachment.mediaType === 'image/webp' || rawAttachment.mediaType === 'image/gif'
       ? rawAttachment.mediaType
-      : (() => { throw new TypeError(`bridge-gpt: ${where}.attachment.mediaType is invalid`) })()
+      : (() => { throw new TypeError(`vision-mix: ${where}.attachment.mediaType is invalid`) })()
     const attachment: VisionAttachmentView = {
       attachmentId: text(rawAttachment.attachmentId, `${where}.attachment.attachmentId`),
       mediaType,
@@ -74,7 +74,7 @@ export function parseCallsPayload(payload: unknown): VisionCallView[] {
     }
     const origin: 'message' | 'tool' | 'tool-result' = item.origin === 'message' || item.origin === 'tool' || item.origin === 'tool-result'
       ? item.origin
-      : (() => { throw new TypeError(`bridge-gpt: ${where}.origin is invalid`) })()
+      : (() => { throw new TypeError(`vision-mix: ${where}.origin is invalid`) })()
     const base = {
       id: text(item.id, `${where}.id`),
       createdAt: integer(item.createdAt, `${where}.createdAt`),
@@ -96,7 +96,7 @@ export function parseCallsPayload(payload: unknown): VisionCallView[] {
     if (item.status === 'error') {
       return { ...base, status: 'error' as const, error: text(item.error, `${where}.error`) }
     }
-    throw new TypeError(`bridge-gpt: ${where}.status is invalid`)
+    throw new TypeError(`vision-mix: ${where}.status is invalid`)
   })
 }
 
@@ -107,12 +107,12 @@ export function attachmentLocator(attachmentId: string): string {
 
 /** Build the read-only call-list URL for one session. */
 export function callsUrl(sessionId: string): string {
-  return `/bridge-gpt/calls?sessionId=${encodeURIComponent(sessionId)}`
+  return `/vision-mix/calls?sessionId=${encodeURIComponent(sessionId)}`
 }
 
 /** Build a preview URL authorized by both session and call identity. */
 export function imageUrl(sessionId: string, callId: string): string {
-  return `/bridge-gpt/image/${encodeURIComponent(callId)}?sessionId=${encodeURIComponent(sessionId)}`
+  return `/vision-mix/image/${encodeURIComponent(callId)}?sessionId=${encodeURIComponent(sessionId)}`
 }
 
 /** Sort calls newest first and collect them into date sections. */

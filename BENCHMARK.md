@@ -1,6 +1,6 @@
 # 图片驱动 Web 开发对比测试
 
-本测试比较 DeepSeek Harness 中直接选择 `DeepSeek-V4-Pro` 与选择 `Mix` 时，完成同一个图片驱动开发任务的结果。测试于 2026 年 8 月 15 日至 16 日在本地 DSH Web 和 `dsh-codex-bridge@0.1.5` 上执行。
+本测试比较 DeepSeek Harness 中直接选择 `DeepSeek-V4-Pro` 与选择 `Mix` 时，完成同一个图片驱动开发任务的结果。测试于 2026 年 8 月 15 日至 16 日在本地 DSH Web 和 Vision Mix 的 0.1.5 原型版本上执行。
 
 ## 测试目标
 
@@ -66,7 +66,7 @@ DSH 会话显示的 Mix 运行数据：
 | 工具时间 | 3分31秒 |
 | 输入 token | 约 400K |
 | 输出 token | 约 37.5K |
-| Bridge GPT 图片调用 | 6 次 |
+| Vision Mix 图片调用 | 6 次 |
 
 六次图片调用分别是：
 
@@ -91,6 +91,6 @@ DSH 会话显示的 Mix 运行数据：
 
 ## 结论
 
-这不是通用的模型编码能力排名。测试只回答一个具体问题：当开发任务依赖一张用户上传的设计稿时，直接选择只声明文本输入的 DeepSeek-V4-Pro 无法开始；选择 Mix 后，同一个 DeepSeek-V4-Pro 可以通过 Bridge GPT 获取图片内容、按 attachment 继续追问像素，并完成可运行页面和视觉自检。
+这不是通用的模型编码能力排名。测试只回答一个具体问题：当开发任务依赖一张用户上传的设计稿时，直接选择只声明文本输入的 DeepSeek-V4-Pro 无法开始；选择 Mix 后，同一个 DeepSeek-V4-Pro 可以通过 Vision Mix 获取图片内容、按 attachment 继续追问像素，并完成可运行页面和视觉自检。
 
 换句话说，Mix 保留了基础模型的 Agent 和编码能力，同时补上了图片输入、跨步骤视觉上下文和重复看图能力。

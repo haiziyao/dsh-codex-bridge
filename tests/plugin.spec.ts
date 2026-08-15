@@ -27,7 +27,7 @@ class ResponseCapture implements HttpResponse {
   end(data: string | Uint8Array = ''): void { this.body = data }
 }
 
-describe('Bridge GPT HTTP settings', () => {
+describe('Vision Mix HTTP settings', () => {
   it('updates routing and serves the live model catalog without credential routes', async () => {
     const updateRouting = vi.fn(async () => undefined)
     const handlers = createSettingsHandlers({
@@ -46,7 +46,7 @@ describe('Bridge GPT HTTP settings', () => {
   })
 })
 
-describe('Bridge GPT host plugin', () => {
+describe('Vision Mix host plugin', () => {
   it('auto-analyzes tool images, attaches context, and bypasses image-free results', async () => {
     const previousAttachment = {
       attachmentId: AttachmentId(`sha256:${'c'.repeat(64)}`), mediaType: 'image/png' as const,
@@ -110,7 +110,7 @@ describe('Bridge GPT host plugin', () => {
     const steered: UserMessage[] = []
     const agent = {
       id: SessionId('session-a'),
-      options: { provider: 'bridge-gpt', model: 'mix' },
+      options: { provider: 'vision-mix', model: 'mix' },
       steer(message: UserMessage) { steered.push(message) },
     } as unknown as Agent
     const firstStep = await preStep(
@@ -123,11 +123,11 @@ describe('Bridge GPT host plugin', () => {
     if (adapter === undefined) throw new Error('Mix adapter was not registered')
     const preprocessingChunks = []
     for await (const chunk of adapter.stream({
-      provider: 'bridge-gpt', model: 'mix', messages: [previousMessage, currentMessage],
+      provider: 'vision-mix', model: 'mix', messages: [previousMessage, currentMessage],
       sessionId: agent.id, signal,
     })) preprocessingChunks.push(chunk)
     expect(preprocessingChunks).toEqual([{ type: 'finish', reason: { kind: 'stop' } }])
-    expect(steered).toEqual([expect.objectContaining({ source: { kind: 'plugin', plugin: 'bridge-gpt' } })])
+    expect(steered).toEqual([expect.objectContaining({ source: { kind: 'plugin', plugin: 'vision-mix' } })])
     expect(append).toHaveBeenCalledOnce()
     expect(append).toHaveBeenLastCalledWith(expect.objectContaining({ origin: 'message', attachment }))
     expect(stream).toHaveBeenCalledOnce()
@@ -140,7 +140,7 @@ describe('Bridge GPT host plugin', () => {
       async () => ({ kind: 'enter', messages: secondMessages }),
     )).resolves.toEqual({ kind: 'enter', messages: secondMessages })
     for await (const _chunk of adapter.stream({
-      provider: 'bridge-gpt', model: 'mix', messages: secondMessages, sessionId: agent.id, signal,
+      provider: 'vision-mix', model: 'mix', messages: secondMessages, sessionId: agent.id, signal,
     })) {}
     expect(append).toHaveBeenCalledOnce()
     expect(stream).toHaveBeenCalledTimes(2)
@@ -157,7 +157,7 @@ describe('Bridge GPT host plugin', () => {
     const imageResult = { isError: false, value: null, content: imageContent } as const
     const decision = await listener(exec, imageResult, async () => ({ kind: 'accept' }))
     expect(decision).toMatchObject({ kind: 'accept', additionalContexts: [
-      { source: { kind: 'plugin', plugin: 'bridge-gpt' }, content: [{ text: expect.stringContaining('visible login error') }] },
+      { source: { kind: 'plugin', plugin: 'vision-mix' }, content: [{ text: expect.stringContaining('visible login error') }] },
     ] })
     expect(append).toHaveBeenCalledWith(expect.objectContaining({ origin: 'tool-result', status: 'success' }))
     expect(stream).toHaveBeenCalledTimes(3)
@@ -165,15 +165,25 @@ describe('Bridge GPT host plugin', () => {
     const textResult = { isError: false, value: 'ok', content: [{ type: 'text', text: 'ok' } as const] } as const
     await expect(listener(exec, textResult, async () => ({ kind: 'accept' }))).resolves.toEqual({ kind: 'accept' })
     expect(stream).toHaveBeenCalledTimes(3)
-    expect(routes).toEqual(['/bridge-gpt/calls', '/bridge-gpt/image', '/bridge-gpt/settings', '/bridge-gpt/models'])
-    expect(registeredTools.map(tool => tool.name)).toEqual(['bridge_gpt_image_query', 'bridge_gpt_attachment_query'])
+    await expect(listener({ ...exec, name: 'vision_mix_image_generate' }, imageResult,
+      async () => ({ kind: 'accept' }))).resolves.toEqual({ kind: 'accept' })
+    expect(stream).toHaveBeenCalledTimes(3)
+    expect(routes).toEqual([
+      '/vision-mix/calls', '/vision-mix/image', '/vision-mix/generations',
+      '/vision-mix/generated-image', '/vision-mix/settings', '/vision-mix/models', '/vision-mix/vision-setup',
+      '/vision-mix/generation-setup',
+    ])
+    expect(registeredTools.map(tool => tool.name)).toEqual([
+      'vision_mix_image_query', 'vision_mix_attachment_query',
+      'vision_mix_image_generate', 'vision_mix_image_edit',
+    ])
 
     vi.spyOn(CallHistory.prototype, 'list').mockResolvedValue([{
       id: CallId('stored-image'), sessionId: agent.id, createdAt: 1, durationMs: 1,
       origin: 'message', backendId: 'vision', model: 'see', prompt: 'first question', attachment,
       status: 'success', title: 'screen', result: 'visible login error',
     }])
-    const attachmentQuery = registeredTools.find(tool => tool.name === 'bridge_gpt_attachment_query')
+    const attachmentQuery = registeredTools.find(tool => tool.name === 'vision_mix_attachment_query')
     if (attachmentQuery === undefined) throw new Error('attachment query tool was not registered')
     await expect(attachmentQuery.execute({
       attachment_id: String(attachment.attachmentId), question: 'What text is visible?',
@@ -240,7 +250,7 @@ describe('Bridge GPT host plugin', () => {
     const steered: UserMessage[] = []
     const agent = {
       id: SessionId('session-followup'),
-      options: { provider: 'bridge-gpt', model: 'mix' },
+      options: { provider: 'vision-mix', model: 'mix' },
       steer(message: UserMessage) { steered.push(message) },
     } as unknown as Agent
     const followup = createUserMessage({
@@ -257,7 +267,7 @@ describe('Bridge GPT host plugin', () => {
 
     const preprocessingChunks = []
     for await (const chunk of adapter.stream({
-      provider: 'bridge-gpt', model: 'mix', messages: [followup], sessionId: agent.id, signal,
+      provider: 'vision-mix', model: 'mix', messages: [followup], sessionId: agent.id, signal,
     })) preprocessingChunks.push(chunk)
     expect(preprocessingChunks).toEqual([{ type: 'finish', reason: { kind: 'stop' } }])
     expect(stream.mock.calls.map(call => call[0].provider)).toEqual(['intent', 'vision'])
@@ -275,7 +285,7 @@ describe('Bridge GPT host plugin', () => {
       async () => ({ kind: 'enter', messages: [analysisContext] }),
     )).resolves.toEqual({ kind: 'enter', messages: [analysisContext] })
     for await (const _chunk of adapter.stream({
-      provider: 'bridge-gpt', model: 'mix', messages: [followup, analysisContext], sessionId: agent.id, signal,
+      provider: 'vision-mix', model: 'mix', messages: [followup, analysisContext], sessionId: agent.id, signal,
     })) {}
     expect(stream.mock.calls[2]?.[0]).toMatchObject({ provider: 'base', model: 'chat' })
   })

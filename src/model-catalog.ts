@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ModelModality } from '@deepseek-ai/dsh-llm'
 import { MIX_PROVIDER } from './config.ts'
 
-/** One configured model selectable by Bridge GPT. */
+/** One configured model selectable by Vision Mix. */
 export interface SelectableModel {
   id: string
   name: string
@@ -20,15 +20,19 @@ export interface SelectableModelGroup {
 /** Browser payload sourced from the same live registry as the global Models page. */
 export interface ModelCatalogView {
   groups: SelectableModelGroup[]
+  generationProviders: Array<{ id: string; name: string }>
   failures: Array<{ provider: string; error: string }>
 }
 
 /** List live configured models while excluding the virtual Mix route to prevent recursion. */
 export async function listSelectableModels(ctx: Context): Promise<ModelCatalogView> {
   const groups: SelectableModelGroup[] = []
+  const generationProviders: ModelCatalogView['generationProviders'] = []
   const failures: ModelCatalogView['failures'] = []
+  const configurable = new Set(ctx.llm.listConfigurableProviders().map(entry => entry.provider))
   for (const provider of ctx.llm.listProviders()) {
     if (provider.id === MIX_PROVIDER) continue
+    if (configurable.has(provider.id)) generationProviders.push({ id: provider.id, name: provider.name })
     try {
       const models = await ctx.llm.listModels(provider.id)
       groups.push({
@@ -45,5 +49,5 @@ export async function listSelectableModels(ctx: Context): Promise<ModelCatalogVi
       failures.push({ provider: provider.id, error: String(error) })
     }
   }
-  return { groups, failures }
+  return { groups, generationProviders, failures }
 }

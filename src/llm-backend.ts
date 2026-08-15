@@ -24,13 +24,13 @@ export function parseAnalysis(raw: string): VisionAnalyzeResult {
   } catch {
     // Some compatible providers return useful plain text despite the requested JSON format.
   }
-  if (trimmed.length === 0) throw new Error('bridge-gpt: selected model returned empty text')
+  if (trimmed.length === 0) throw new Error('vision-mix: selected model returned empty text')
   return { title: 'image', result: trimmed, raw: trimmed }
 }
 
 function finishError(reason: FinishReason): Error | undefined {
   if (reason.kind !== 'error' && reason.kind !== 'aborted') return undefined
-  return new Error(`bridge-gpt: selected model failed: ${reason.failure.message}`)
+  return new Error(`vision-mix: selected model failed: ${reason.failure.message}`)
 }
 
 /** Collect visible text from one ordinary harness model request. */
@@ -53,7 +53,7 @@ export async function generateText(
       if (error !== undefined) throw error
     }
   }
-  if (text.trim().length === 0) throw new Error('bridge-gpt: selected model returned empty text')
+  if (text.trim().length === 0) throw new Error('vision-mix: selected model returned empty text')
   return text.trim()
 }
 
@@ -74,7 +74,7 @@ export class LlmVisionBackend implements VisionBackend {
         { type: 'text', text: request.prompt },
         { type: 'image', attachment: request.attachment },
       ],
-      source: { kind: 'plugin', plugin: 'bridge-gpt' },
+      source: { kind: 'plugin', plugin: 'vision-mix' },
     }], request.signal)
     return parseAnalysis(raw)
   }

@@ -41,7 +41,7 @@ describe('Mix agent-loop integration', () => {
     const releasePreprocessing = Promise.withResolvers<void>()
     let shouldPreprocess = true
     const config = resolveConfig({ baseModel: { provider: 'base', model: 'chat' } })
-    ctx.llm.registerAdapter(['bridge-gpt'], new MixedAdapter(ctx, () => config, async (options) => {
+    ctx.llm.registerAdapter(['vision-mix'], new MixedAdapter(ctx, () => config, async (options) => {
       if (!shouldPreprocess) return false
       shouldPreprocess = false
       preprocessingStarted.resolve()
@@ -56,7 +56,7 @@ describe('Mix agent-loop integration', () => {
       return true
     }))
 
-    const agent = ctx.agentLoop.create(SessionId('bridge-loop'), { provider: 'bridge-gpt', model: 'mix' })
+    const agent = ctx.agentLoop.create(SessionId('bridge-loop'), { provider: 'vision-mix', model: 'mix' })
     const image = {
       attachmentId: AttachmentId(`sha256:${'f'.repeat(64)}`), mediaType: 'image/png' as const,
       bytes: 3, width: 1, height: 1,
@@ -80,7 +80,7 @@ describe('Mix agent-loop integration', () => {
       .filter(event => event.type === 'user/message')
       .map(event => event.type === 'user/message' ? event.data : undefined)
     expect(enteredMessages).toHaveLength(2)
-    expect(enteredMessages[1]?.source).toEqual({ kind: 'plugin', plugin: 'bridge-gpt' })
+    expect(enteredMessages[1]?.source).toEqual({ kind: 'plugin', plugin: 'vision-mix' })
     expect(base.requests).toHaveLength(1)
     expect(base.requests[0]?.messages.some(message =>
       message.content.some(block => block.type === 'text' && block.text.includes('绿色按钮')))).toBe(true)

@@ -14,7 +14,7 @@ afterEach(async () => {
 })
 
 async function history(): Promise<{ root: string; history: CallHistory }> {
-  const root = await mkdtemp(join(tmpdir(), 'bridge-gpt-history-'))
+  const root = await mkdtemp(join(tmpdir(), 'vision-mix-history-'))
   roots.push(root)
   return { root, history: new CallHistory(root) }
 }

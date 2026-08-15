@@ -3,7 +3,7 @@ import { basename, dirname, resolve } from 'node:path'
 import { transform } from 'lightningcss'
 import type { UserConfig } from 'tsdown'
 
-const PLUGIN_ID = 'dsh-codex-bridge'
+const PLUGIN_ID = 'dsh-vision-mix'
 const PLATFORM_MODULES = [
   'react',
   'react/jsx-runtime',
@@ -17,7 +17,7 @@ const PLATFORM_MODULES = [
   '@deepseek-ai/dsh-client-schema-form',
 ] as const
 
-const CSS_PREFIX = '\0dsh-codex-bridge-css:'
+const CSS_PREFIX = '\0dsh-vision-mix-css:'
 const CSS_SUFFIX = '.mjs'
 
 const nodeBundle: UserConfig = {
@@ -51,7 +51,7 @@ const clientBundle: UserConfig = {
     'import.meta.env': JSON.stringify({ MODE: process.env.NODE_ENV ?? 'production' }),
   },
   plugins: [{
-    name: 'dsh-codex-bridge-css-modules',
+    name: 'dsh-vision-mix-css-modules',
     resolveId(source: string, importer: string | undefined) {
       if (!source.endsWith('.module.css') || importer === undefined) return null
       return `${CSS_PREFIX}${resolve(dirname(importer), source)}${CSS_SUFFIX}`

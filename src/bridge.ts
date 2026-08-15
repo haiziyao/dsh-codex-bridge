@@ -99,7 +99,7 @@ export function parseImageReferenceDecision(value: string): boolean {
   const parsed: unknown = JSON.parse(trimmed)
   if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)
     || typeof (parsed as Record<string, unknown>).referencesImage !== 'boolean') {
-    throw new Error('bridge-gpt: intent model returned an invalid image-reference decision')
+    throw new Error('vision-mix: intent model returned an invalid image-reference decision')
   }
   return (parsed as { referencesImage: boolean }).referencesImage
 }
@@ -126,7 +126,7 @@ export function renderAttachmentReference(attachment: ImageAttachmentRef): strin
     '<image-attachment>',
     ...attachmentLines(attachment),
     'storage: Private DSH attachment storage; this locator is not a workspace filesystem path.',
-    'Do not search the workspace for this image. Bridge GPT can reopen it by attachment_id for pixel-level follow-up.',
+    'Do not search the workspace for this image. Vision Mix can reopen it by attachment_id for pixel-level follow-up.',
     '</image-attachment>',
   ].join('\n')
 }
@@ -147,11 +147,11 @@ export function createAnalysisContext(
         `analysis: ${result}`,
         'The vision backend inspected the actual stored bytes for this attachment.',
         'This is not a workspace file path. Do not search the filesystem or claim the pixels are unavailable.',
-        'For another pixel-level question, Bridge GPT can reopen this attachment by attachment_id.',
+        'For another pixel-level question, Vision Mix can reopen this attachment by attachment_id.',
         '</img-caption>',
       ].join('\n'),
     }],
-    source: { kind: 'plugin', plugin: 'bridge-gpt' },
+    source: { kind: 'plugin', plugin: 'vision-mix' },
   })
 }
 
