@@ -4,7 +4,7 @@ import { CallId as LlmCallId, createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import { describe, expect, it, vi } from 'vitest'
 import type { VisionBackend } from '../src/backend.ts'
-import { MixedAdapter, renderVisionPrompt, transformMessages } from '../src/bridge.ts'
+import { analyzeMessageImages, MixedAdapter, renderVisionPrompt } from '../src/bridge.ts'
 import { resolveConfig } from '../src/config.ts'
 import { CallId, type VisionCallRecord } from '../src/history.ts'
 
@@ -27,7 +27,7 @@ function setup(backend: VisionBackend) {
   }
 }
 
-describe('transformMessages', () => {
+describe('analyzeMessageImages', () => {
   it('prepares identification and interface inspection before requesting JSON', () => {
     const prompt = renderVisionPrompt('这是谁？')
     expect(prompt).toContain('actively identify a known person/character')
@@ -40,20 +40,19 @@ describe('transformMessages', () => {
     const analyze = vi.fn<VisionBackend['analyze']>()
     const context = setup({ id: 'vision', model: 'see', analyze })
     const message = createUserMessage({ content: [{ type: 'text', text: 'hello' }], source: { kind: 'user' } })
-    await expect(transformMessages({ sessionId: SessionId('s'), messages: [message] }, context.dependencies)).resolves.toEqual([message])
+    await expect(analyzeMessageImages({ sessionId: SessionId('s'), messages: [message] }, context.dependencies)).resolves.toEqual([])
     expect(analyze).not.toHaveBeenCalled()
     expect(context.records).toEqual([])
   })
 
-  it('preserves the visible image and appends a recorded analysis context', async () => {
+  it('returns one recorded analysis context for a new image', async () => {
     const analyze = vi.fn<VisionBackend['analyze']>(async () => ({ title: 'page', result: 'green button', raw: '{}' }))
     const context = setup({ id: 'vision', model: 'see', analyze })
     const message = createUserMessage({
       content: [{ type: 'text', text: 'button color?' }, { type: 'image', attachment: IMAGE }], source: { kind: 'user' },
     })
-    const result = await transformMessages({ sessionId: SessionId('s'), messages: [message] }, context.dependencies)
-    expect(result[0]).toBe(message)
-    expect(result[1]).toMatchObject({ source: { kind: 'plugin', plugin: 'bridge-gpt' }, content: [{ type: 'text', text: expect.stringContaining('green button') }] })
+    const result = await analyzeMessageImages({ sessionId: SessionId('s'), messages: [message] }, context.dependencies)
+    expect(result[0]).toMatchObject({ source: { kind: 'plugin', plugin: 'bridge-gpt' }, content: [{ type: 'text', text: expect.stringContaining('green button') }] })
     expect(analyze).toHaveBeenCalledWith({ attachment: IMAGE, prompt: renderVisionPrompt('button color?') })
     expect(context.records).toEqual([expect.objectContaining({ origin: 'message', attachment: IMAGE, result: 'green button' })])
   })

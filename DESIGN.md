@@ -14,6 +14,8 @@ Bridge GPT 设置只保存三个模型引用：
 
 ## 三条输入路径
 
+`agent/pre-step` 只分析事件原始 `messages` payload 中的新图片。下游 listener 返回的 `decision.messages` 可能包含历史消息、压缩上下文或其他插件注入；这些消息只用于最终模型请求，不能作为新的视觉调用来源。图片分析上下文追加到下游 decision，工具返回图片则由 `tools/post-execute` 独立处理。
+
 ### 没有图片
 
 `agent/pre-step` 扫描不到顶层图片时原样返回消息；`tools/post-execute` 扫描不到工具结果图片时原样接受结果。图片模型和意图模型都不会被调用，`Mix` 直接把文本安全消息委托给基础模型。

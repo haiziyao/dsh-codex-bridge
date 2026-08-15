@@ -144,17 +144,16 @@ export async function analyzeAttachment(
   }
 }
 
-/** Preserve visible image messages, append logged analyses, and bypass text-only turns. */
-export async function transformMessages(
+/** Analyze only the new messages supplied for one pre-step and return text contexts for their images. */
+export async function analyzeMessageImages(
   request: TransformRequest,
   dependencies: TransformDependencies,
 ): Promise<UserMessage[]> {
-  const output: UserMessage[] = []
+  const contexts: UserMessage[] = []
   for (const message of request.messages) {
     const images = message.content.filter(
       (block): block is Extract<ContentBlock, { type: 'image' }> => block.type === 'image',
     )
-    output.push(message)
     if (images.length === 0) continue
     const prompt = renderVisionPrompt(requestText(message))
     for (const image of images) {
@@ -165,10 +164,10 @@ export async function transformMessages(
         prompt,
         ...(request.signal === undefined ? {} : { signal: request.signal }),
       }, dependencies)
-      output.push(createAnalysisContext(analyzed.title, analyzed.result))
+      contexts.push(createAnalysisContext(analyzed.title, analyzed.result))
     }
   }
-  return output
+  return contexts
 }
 
 function textOnlyBlocks(blocks: readonly ContentBlock[], nested: boolean): ContentBlock[] {

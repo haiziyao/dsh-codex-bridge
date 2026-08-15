@@ -1,6 +1,7 @@
 import type { Context } from '@deepseek-ai/cordis'
+import type { PreStepDecision } from '@deepseek-ai/dsh-agent'
 import { AttachmentId } from '@deepseek-ai/dsh-attachment'
-import { CallId as LlmCallId, type ContentBlock } from '@deepseek-ai/dsh-llm'
+import { CallId as LlmCallId, createUserMessage, type ContentBlock, type UserMessage } from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { PostToolDecision, ToolExecution, ToolExecutionResult } from '@deepseek-ai/dsh-tools'
 import { Readable } from 'node:stream'
@@ -38,6 +39,10 @@ describe('Bridge GPT HTTP settings', () => {
 
 describe('Bridge GPT host plugin', () => {
   it('auto-analyzes tool images, attaches context, and bypasses image-free results', async () => {
+    const previousAttachment = {
+      attachmentId: AttachmentId(`sha256:${'c'.repeat(64)}`), mediaType: 'image/png' as const,
+      bytes: 3, width: 1, height: 1,
+    }
     const attachment = {
       attachmentId: AttachmentId(`sha256:${'d'.repeat(64)}`), mediaType: 'image/png' as const,
       bytes: 3, width: 1, height: 1,
@@ -59,7 +64,7 @@ describe('Bridge GPT host plugin', () => {
       on(event: string, listener: unknown) { listeners.set(event, listener); return () => undefined },
       tools: { register: () => () => undefined },
       attachments: {
-        readImage: async () => ({ ref: attachment, data: new Uint8Array([1, 2, 3]) }),
+        readImage: async (ref: typeof attachment) => ({ ref, data: new Uint8Array([1, 2, 3]) }),
         saveImage: async () => attachment,
       },
       settings: { writable: true, describe: () => [], mutate: async () => undefined },
@@ -75,6 +80,39 @@ describe('Bridge GPT host plugin', () => {
       imageModel: { provider: 'vision', model: 'see' },
       autoAnalyzeToolImages: true,
     })
+    const preStep = listeners.get('agent/pre-step') as (
+      payload: { agent: { id: ReturnType<typeof SessionId> }; messages: UserMessage[]; turn: number; step: number; signal: AbortSignal },
+      next: () => Promise<PreStepDecision>,
+    ) => Promise<PreStepDecision>
+    const previousMessage = createUserMessage({
+      content: [{ type: 'text', text: 'previous' }, { type: 'image', attachment: previousAttachment }],
+      source: { kind: 'user' },
+    })
+    const currentMessage = createUserMessage({
+      content: [{ type: 'text', text: 'current' }, { type: 'image', attachment }],
+      source: { kind: 'user' },
+    })
+    const signal = new AbortController().signal
+    const firstStep = await preStep(
+      { agent: { id: SessionId('session-a') }, messages: [currentMessage], turn: 2, step: 1, signal },
+      async () => ({ kind: 'enter', messages: [previousMessage, currentMessage] }),
+    )
+    expect(firstStep).toMatchObject({ kind: 'enter', messages: [
+      previousMessage,
+      currentMessage,
+      { source: { kind: 'plugin', plugin: 'bridge-gpt' } },
+    ] })
+    expect(append).toHaveBeenCalledOnce()
+    expect(append).toHaveBeenLastCalledWith(expect.objectContaining({ origin: 'message', attachment }))
+    expect(stream).toHaveBeenCalledOnce()
+
+    await expect(preStep(
+      { agent: { id: SessionId('session-a') }, messages: [], turn: 2, step: 2, signal },
+      async () => ({ kind: 'enter', messages: [previousMessage, currentMessage] }),
+    )).resolves.toEqual({ kind: 'enter', messages: [previousMessage, currentMessage] })
+    expect(append).toHaveBeenCalledOnce()
+    expect(stream).toHaveBeenCalledOnce()
+
     const listener = listeners.get('tools/post-execute') as (
       exec: ToolExecution, result: Readonly<ToolExecutionResult>, next: () => Promise<PostToolDecision>
     ) => Promise<PostToolDecision>
@@ -89,11 +127,11 @@ describe('Bridge GPT host plugin', () => {
       { source: { kind: 'plugin', plugin: 'bridge-gpt' }, content: [{ text: expect.stringContaining('visible login error') }] },
     ] })
     expect(append).toHaveBeenCalledWith(expect.objectContaining({ origin: 'tool-result', status: 'success' }))
-    expect(stream).toHaveBeenCalledOnce()
+    expect(stream).toHaveBeenCalledTimes(2)
 
     const textResult = { isError: false, value: 'ok', content: [{ type: 'text', text: 'ok' } as const] } as const
     await expect(listener(exec, textResult, async () => ({ kind: 'accept' }))).resolves.toEqual({ kind: 'accept' })
-    expect(stream).toHaveBeenCalledOnce()
+    expect(stream).toHaveBeenCalledTimes(2)
     expect(routes).toEqual(['/bridge-gpt/calls', '/bridge-gpt/image', '/bridge-gpt/settings', '/bridge-gpt/models'])
   })
 })

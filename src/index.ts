@@ -11,10 +11,10 @@ import { readFile } from 'node:fs/promises'
 import { basename, extname, isAbsolute, join } from 'node:path'
 import {
   analyzeAttachment,
+  analyzeMessageImages,
   createAnalysisContext,
   MixedAdapter,
   renderVisionPrompt,
-  transformMessages,
 } from './bridge.ts'
 import {
   Config as ConfigSchema,
@@ -118,11 +118,11 @@ export function apply(ctx: Context, input: PluginConfig): void {
 
   ctx.llm.registerAdapter([MIX_PROVIDER], new MixedAdapter(ctx, () => config))
 
-  ctx.on('agent/pre-step', async ({ agent, signal }, next) => {
+  ctx.on('agent/pre-step', async ({ agent, messages, signal }, next) => {
     const decision = await next()
     if (decision.kind === 'reject' || signal.aborted) return decision
-    const messages = await transformMessages({ sessionId: agent.id, messages: decision.messages, signal }, dependencies())
-    return { kind: 'enter', messages }
+    const contexts = await analyzeMessageImages({ sessionId: agent.id, messages, signal }, dependencies())
+    return { kind: 'enter', messages: [...decision.messages, ...contexts] }
   }, { prepend: true })
 
   ctx.on('tools/post-execute', async (exec, result, next): Promise<PostToolDecision> => {

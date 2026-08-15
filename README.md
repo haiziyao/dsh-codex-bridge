@@ -1,6 +1,6 @@
 # DSH Codex Bridge
 
-![Version](https://img.shields.io/badge/version-0.1.1-4c7dff)
+![Version](https://img.shields.io/badge/version-0.1.2-4c7dff)
 ![License](https://img.shields.io/badge/license-MIT-22a06b)
 ![DeepSeek Harness](https://img.shields.io/badge/DeepSeek_Harness-plugin-6f5cff)
 
@@ -25,6 +25,8 @@
 | Agent 截图或工具返回图片 | 工具完成后分析真实的 `image` content block，再把结果追加到下一步上下文 |
 | 工具没有返回图片 | 原样继续，不触发视觉模型或意图模型 |
 
+每个 agent step 只检查该 step 原始输入中的新图片，不扫描下游重新组装的历史消息。上一轮图片不会在下一轮再次识别，工具续步也不会重复生成侧边栏记录；同一张图片在用户明确重新发送时仍视为一次新的调用。
+
 视觉预处理提示词会要求模型检查实际像素：人物和虚构角色会比较发型、服装、配饰、画风与可能出处；界面截图会提取文字、布局、控件状态和错误区域。发送给视觉模型的完整提示词也会记录在侧边栏中。
 
 完整设计见 [DESIGN.md](DESIGN.md)。
@@ -45,7 +47,7 @@
 
 ```powershell
 cd E:\git\deepseek-harness
-pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.1/dsh-codex-bridge-0.1.1.tgz
+pnpm dsh plugin --profile web add https://github.com/haiziyao/dsh-codex-bridge/releases/download/v0.1.2/dsh-codex-bridge-0.1.2.tgz
 ```
 
 安装命令会把插件依赖和 bundle 写入 Web profile。之后直接启动：
