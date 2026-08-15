@@ -137,6 +137,22 @@ pnpm run build
 
 `pnpm run check` 会依次执行全部三项。
 
+## 发布
+
+仓库使用 npm Trusted Publishing，不保存 `NPM_TOKEN`。`.github/workflows/publish.yml` 会在推送 `v*` 标签时通过 GitHub OIDC 获取一次性发布凭据，安装锁定依赖，确认标签与 `package.json` 版本一致，运行完整检查后发布到 npm。npm 会自动为该版本生成来源证明。
+
+发布新版本时先更新 `package.json` 和 `pnpm-lock.yaml` 中的版本并提交，再推送完全匹配的标签：
+
+```powershell
+pnpm version patch --no-git-tag-version
+git add package.json pnpm-lock.yaml
+git commit -m "chore: release v0.1.3"
+git tag v0.1.3
+git push origin main v0.1.3
+```
+
+如果实际版本不是 `0.1.3`，标签必须使用对应版本。发布工作流无需 npm Token；npm 包的 Trusted Publisher 必须绑定 GitHub 仓库 `haiziyao/dsh-codex-bridge`、工作流文件 `publish.yml`，并允许 `npm publish`。
+
 ## License
 
 [MIT](LICENSE)

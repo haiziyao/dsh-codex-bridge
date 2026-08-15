@@ -1,0 +1,43 @@
+name: Publish npm package
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: npm-publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          registry-url: 'https://registry.npmjs.org'
+          package-manager-cache: false
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Verify tag matches package version
+        run: node -e 'const expected = "v" + require("./package.json").version; if (process.env.GITHUB_REF_NAME !== expected) { throw new Error("Expected tag " + expected + ", received " + process.env.GITHUB_REF_NAME) }'
+
+      - name: Check package
+        run: pnpm run check
+
+      - name: Publish to npm
+        run: npm publish --access public
