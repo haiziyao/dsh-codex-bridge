@@ -48,7 +48,7 @@ pnpm dsh web
 3. Vision Mix 会临时授予该模型 `image` 能力，发送一张红色测试图。
 4. 模型正确识别红色后，Vision Mix 才会保存能力声明并把它设为图片模型；失败会自动回滚。
 
-![中转站识图模型接入](docs/vision-onboarding-preview.svg)
+![中转站识图模型接入](docs/settings-routing.png)
 
 测试会产生一次很小的模型调用，但不会出现在聊天会话中。
 
@@ -156,19 +156,19 @@ DSH Web 模型编辑器会保留这个额外字段。
 
 ### 模型与生图设置
 
-![Vision Mix 设置页面](docs/settings-preview.svg)
+![Vision Mix 生图设置页面](docs/generation-routing.png)
 
 ### 会话级识图记录
 
 安装可选的 [dsh-better-sidebar](https://github.com/omdsh-dev/DSH-better-sidebar) 后，每次识图调用默认折叠显示；展开后可以查看完整提示词、图片预览、attachment id 和解析结果。
 
-![会话级识图记录](docs/history-preview.svg)
+![会话级识图记录](docs/vision-history.png)
 
 ### 会话级生图记录
 
 生图与编辑记录和识图记录分开，包含提示词、源图片、输出参数和生成结果。
 
-![会话级生图记录](docs/generation-preview.svg)
+![会话级生图记录](docs/generation-history.png)
 
 侧边栏插件不是必需依赖。未安装时，Mix 路由、识图、跨轮追问、生图、对话图片显示和记录持久化仍然正常，只是不显示侧边栏入口。
 
@@ -178,8 +178,8 @@ DSH Web 模型编辑器会保留这个额外字段。
 - 每个模型调用都通过所选 Provider 的 credential reference 重新解析凭据。
 - 用户图片和生成图由 DSH attachment 服务验证和保存。
 - 会话记录保存 attachment id，而不是宿主机器绝对路径或图片 base64。
-- `vision_mix_attachment_query` 只能读取当前会话识图记录中出现过的附件。
-- `vision_mix_image_edit` 只能编辑当前会话识图记录或生图记录中出现过的附件。
+- `vision_mix_attachment_query` 只能读取当前会话消息、工具结果或识图记录中出现过的附件。
+- `vision_mix_image_edit` 只能编辑当前会话消息、工具结果、识图记录或生图记录中出现过的附件。
 - 图片预览同时校验会话 id 和调用记录 id，不能跨会话枚举。
 - 识图历史默认位于 `$DSH_HOME/vision-mix/v1/calls/`。
 - 生图历史默认位于 `$DSH_HOME/vision-mix/v1/generations/`。
