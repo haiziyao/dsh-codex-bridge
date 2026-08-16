@@ -113,12 +113,6 @@ async function rollbackEdit(ctx: Context, edit: CapabilityEdit): Promise<void> {
   await ctx.settings.mutate(edit.ns, [op], snapshot.revision)
 }
 
-async function selectImageModel(ctx: Context, route: ModelRoute): Promise<void> {
-  const ns = settingsNamespace('vision-mix')
-  const snapshot = descriptor(ctx, ns)
-  await ctx.settings.mutate(ns, [{ op: 'set', path: ['imageModel'], value: route }], snapshot.revision)
-}
-
 async function probeImage(ctx: Context, route: ModelRoute, signal?: AbortSignal): Promise<string> {
   const attachment: ImageAttachmentRef = await ctx.attachments.saveImage({
     data: RED_TEST_PNG,
@@ -177,7 +171,7 @@ export class VisionSetupService {
           action: 'test', route, imageEnabled: alreadyEnabled, selected: false,
           message: alreadyEnabled
             ? '图片测试通过；该模型已经声明 image 能力。'
-            : '图片测试通过；临时能力声明已回滚，点击“强制启用”或“一键自动配置”可正式保存。',
+            : '图片测试通过；临时能力声明已回滚，点击“强制启用 image”或“测试并启用 image”可正式保存。',
           response,
         }
       } finally {
@@ -186,21 +180,15 @@ export class VisionSetupService {
     })
   }
 
-  /** Persist image capability without making a paid model request, then select the route. */
+  /** Persist image capability without making a paid model request. */
   enable(route: ModelRoute): Promise<VisionSetupResult> {
     return this.serial(route, async () => {
       const info = await this.ctx.llm.resolveModelInfo(route.provider, route.model)
       const edit = info.inputModalities?.includes('image') === true ? undefined : capabilityEdit(this.ctx, route)
       if (edit !== undefined) await applyEdit(this.ctx, edit)
-      try {
-        await selectImageModel(this.ctx, route)
-      } catch (error: unknown) {
-        if (edit !== undefined) await rollbackEdit(this.ctx, edit)
-        throw error
-      }
       return {
-        action: 'enable', route, imageEnabled: true, selected: true,
-        message: '已强制声明 image 能力，并设为 Vision Mix 图片模型。此操作没有验证中转站是否真的支持图片。',
+        action: 'enable', route, imageEnabled: true, selected: false,
+        message: '已强制声明 image 能力。现在可以在“基础设置 → 图片模型”中选择它；此操作没有验证中转站是否真的支持图片。',
       }
     })
   }
@@ -214,10 +202,9 @@ export class VisionSetupService {
       if (edit !== undefined) await applyEdit(this.ctx, edit)
       try {
         const response = await probeImage(this.ctx, route, signal)
-        await selectImageModel(this.ctx, route)
         return {
-          action: 'auto', route, imageEnabled: true, selected: true,
-          message: '真实图片测试通过，已保存 image 能力并设为 Vision Mix 图片模型。',
+          action: 'auto', route, imageEnabled: true, selected: false,
+          message: '真实图片测试通过，已保存 image 能力。现在可以在“基础设置 → 图片模型”中选择它。',
           response,
         }
       } catch (error: unknown) {

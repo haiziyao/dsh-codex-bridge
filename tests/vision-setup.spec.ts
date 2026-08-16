@@ -84,23 +84,23 @@ describe('VisionSetupService', () => {
     expect(subject.mutate).toHaveBeenCalledTimes(2)
   })
 
-  it('force-enables without an API request and selects the route', async () => {
+  it('force-enables without an API request and leaves route selection to the user', async () => {
     const subject = harness()
     await expect(new VisionSetupService(subject.ctx).enable(ROUTE)).resolves.toMatchObject({
-      action: 'enable', imageEnabled: true, selected: true,
+      action: 'enable', imageEnabled: true, selected: false,
     })
     expect(subject.provider.models[0]).toEqual({ id: 'vision', contextWindow: 200_000, input: ['text', 'image'] })
-    expect(subject.bridge.imageModel).toEqual(ROUTE)
+    expect(subject.bridge.imageModel).toEqual({ provider: 'old', model: 'old-vision' })
     expect(subject.stream).not.toHaveBeenCalled()
   })
 
   it('keeps the declaration only after automatic setup passes a real image probe', async () => {
     const subject = harness('The tile is RED.')
     await expect(new VisionSetupService(subject.ctx).auto(ROUTE)).resolves.toMatchObject({
-      action: 'auto', imageEnabled: true, selected: true,
+      action: 'auto', imageEnabled: true, selected: false,
     })
     expect(subject.provider.models[0]?.input).toEqual(['text', 'image'])
-    expect(subject.bridge.imageModel).toEqual(ROUTE)
+    expect(subject.bridge.imageModel).toEqual({ provider: 'old', model: 'old-vision' })
     expect(subject.stream).toHaveBeenCalledOnce()
   })
 

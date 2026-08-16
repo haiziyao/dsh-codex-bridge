@@ -9,7 +9,8 @@ import { attachmentLocator, callsUrl, groupCalls, imageUrl, parseCallsPayload, t
 import { generatedImageUrl, generationsUrl, parseGenerationsPayload, type GenerationView } from './generation-model.ts'
 import {
   parseGenerationSetupPayload, parseModelCatalog, parseRouteValue, parseSettingsPayload, parseVisionSetupPayload, routeValue,
-  type VisionMixSettingsPayload, type ModelCatalogPayload, type SelectableModelGroupView,
+  type VisionMixSettingsPayload, type ModelCatalogPayload, type SelectableModelGroupView, type SelectableModelView,
+  type VisionSetupPayload,
 } from './settings-model.ts'
 import css from './VisionMix.module.css'
 
@@ -81,6 +82,39 @@ function modelLabel(groups: SelectableModelGroupView[], route: ModelRoute | unde
     : `${model.name} (${route.provider}/${route.model})`
 }
 
+function modelForRoute(groups: SelectableModelGroupView[], route: ModelRoute | undefined): SelectableModelView | undefined {
+  if (route === undefined) return undefined
+  return groups.find(group => group.id === route.provider)?.models.find(model => model.id === route.model)
+}
+
+function modelModalities(model: SelectableModelView | undefined): { text: boolean; image: boolean } {
+  const declared = model?.inputModalities
+  return {
+    text: declared === undefined || declared.includes('text'),
+    image: declared?.includes('image') === true,
+  }
+}
+
+function CapabilityBadges(props: { model: SelectableModelView | undefined }): ReactNode {
+  const modalities = modelModalities(props.model)
+  return createElement('span', { className: css.capabilityBadges, 'aria-hidden': true },
+    modalities.text ? createElement('span', { className: css.capabilityBadge, 'data-modality': 'text' },
+      createElement('span', { className: `${css.capabilityDot} ${css.capabilityDotText}` }), '文本') : null,
+    modalities.image ? createElement('span', { className: css.capabilityBadge, 'data-modality': 'image' },
+      createElement('span', { className: `${css.capabilityDot} ${css.capabilityDotImage}` }), '图片') : null)
+}
+
+function ModelOptionLabel(props: {
+  providerId: string
+  model: SelectableModelView
+}): ReactNode {
+  return createElement('span', { className: css.modelOption },
+    createElement('span', { className: css.modelOptionText },
+      createElement('span', { className: css.modelOptionName }, props.model.name),
+      createElement('span', { className: css.modelOptionId }, `${props.providerId}/${props.model.id}`)),
+    createElement(CapabilityBadges, { model: props.model }))
+}
+
 function ModelPicker(props: {
   label: string
   route: ModelRoute | undefined
@@ -108,16 +142,20 @@ function ModelPicker(props: {
     items.push({ type: 'label', id: `provider:${group.id}`, text: group.name })
     for (const model of group.models) {
       const candidate = { provider: group.id, model: model.id }
-      items.push({ id: routeValue(candidate), label: `${model.name} (${group.id}/${model.id})` })
+      items.push({ id: routeValue(candidate), label: createElement(ModelOptionLabel, { providerId: group.id, model }) })
     }
   }
   const selected = route === undefined ? '' : routeValue(route)
+  const selectedModel = modelForRoute(groups, route)
+  const selectedLabel = modelLabel(groups, route, props.emptyLabel)
   const anchor = createElement('button', {
     type: 'button', className: css.pickerTrigger, disabled,
+    'aria-label': `${label}：${selectedLabel}`,
     'aria-haspopup': 'menu', 'aria-expanded': open,
     onClick: () => { setOpen(value => !value) },
   },
-  createElement('span', { className: css.pickerText }, modelLabel(groups, route, props.emptyLabel)),
+  createElement('span', { className: css.pickerText }, selectedLabel),
+  selectedModel === undefined ? null : createElement(CapabilityBadges, { model: selectedModel }),
   createElement(IconChevronDownOutline14, { className: css.pickerChevron }))
 
   return createElement('div', { className: css.field },
@@ -152,6 +190,7 @@ function GenerationModelPicker(props: {
   }
   const anchor = createElement('button', {
     type: 'button', className: css.pickerTrigger, disabled: props.disabled,
+    'aria-label': `图片生成模型：${label}`,
     'aria-haspopup': 'menu', 'aria-expanded': open,
     onClick: () => { setOpen(value => !value) },
   }, createElement('span', { className: css.pickerText }, label),
@@ -201,11 +240,11 @@ function VisionMixSettingsView(): ReactNode {
   const [saving, setSaving] = useState(false)
   const [setupRoute, setSetupRoute] = useState<ModelRoute | null>(null)
   const [setupBusy, setSetupBusy] = useState<'test' | 'enable' | 'auto' | null>(null)
-  const [setupResponse, setSetupResponse] = useState<string | null>(null)
+  const [setupResult, setSetupResult] = useState<VisionSetupPayload | null>(null)
   const [generationTestBusy, setGenerationTestBusy] = useState(false)
   const [generationTestPreview, setGenerationTestPreview] = useState<string | null>(null)
 
-  const load = async (signal?: AbortSignal): Promise<void> => {
+  const load = async (signal?: AbortSignal, preserveRouting = false): Promise<void> => {
     const request = signal === undefined ? {} : { signal }
     const [settingsResponse, modelsResponse] = await Promise.all([
       fetch('/vision-mix/settings', request), fetch('/vision-mix/models', request),
@@ -215,7 +254,7 @@ function VisionMixSettingsView(): ReactNode {
     }
     const parsedSettings = parseSettingsPayload(await settingsResponse.json())
     setSnapshot(parsedSettings)
-    setRouting(parsedSettings.routing)
+    if (!preserveRouting) setRouting(parsedSettings.routing)
     setSetupRoute(current => current ?? parsedSettings.routing.imageModel ?? null)
     setCatalog(parseModelCatalog(await modelsResponse.json()))
   }
@@ -255,7 +294,7 @@ function VisionMixSettingsView(): ReactNode {
     setSetupBusy(action)
     setError(null)
     setNotice(null)
-    setSetupResponse(null)
+    setSetupResult(null)
     try {
       const response = await fetch('/vision-mix/vision-setup', {
         method: 'POST', headers: { 'content-type': 'application/json' },
@@ -264,12 +303,11 @@ function VisionMixSettingsView(): ReactNode {
       const body: unknown = await response.json()
       if (!response.ok) throw new Error(String((body as { error?: unknown }).error ?? `HTTP ${response.status}`))
       const result = parseVisionSetupPayload(body)
-      setNotice(result.message)
-      setSetupResponse(result.response ?? null)
-      await load()
+      setSetupResult(result)
+      await load(undefined, true)
     } catch (reason: unknown) {
       setError(String(reason))
-      await load().catch(() => undefined)
+      await load(undefined, true).catch(() => undefined)
     } finally {
       setSetupBusy(null)
     }
@@ -302,6 +340,8 @@ function VisionMixSettingsView(): ReactNode {
     return createElement('div', { className: css.settingsSection }, error ?? '正在加载 Vision Mix 设置…')
   }
   const disabled = saving || !snapshot.available || !snapshot.writable
+  const setupModel = modelForRoute(catalog.groups, setupRoute ?? undefined)
+  const setupHasImage = modelModalities(setupModel).image
   return createElement('div', { className: css.settingsSection },
     createElement('div', { className: css.sectionHeading }, visionMixIcon(20),
       createElement('h2', { className: css.sectionTitle }, 'Vision Mix')),
@@ -309,34 +349,6 @@ function VisionMixSettingsView(): ReactNode {
       'Mix 是固定的虚拟模型。这里只选择“设置 → 模型”中已经配置好的模型，不重复保存 API 地址或密钥。'),
     error === null ? null : createElement('p', { role: 'alert', className: css.error }, error),
     notice === null ? null : createElement('p', { className: css.notice }, notice),
-    createElement('section', { className: css.module },
-      createElement('div', { className: css.moduleTitle }, '识图模型接入'),
-      createElement('p', { className: css.help },
-        '中转站模型经常只被 DSH 识别为文本模型。这里可以真实发送一张红色测试图，并安全写入模型的 image 能力声明。'),
-      createElement(ModelPicker, {
-        label: '待接入模型', route: setupRoute ?? undefined, groups: catalog.groups,
-        disabled: disabled || setupBusy !== null,
-        help: '列表来自“设置 → 模型”，包括尚未声明 image 能力的文本模型。测试会产生一次很小的模型请求。',
-        onChange: value => { if (value !== undefined) setSetupRoute(value) },
-      }),
-      createElement('div', { className: css.setupActions },
-        createElement(Button, {
-          variant: 'outline', disabled: disabled || setupRoute === null || setupBusy !== null,
-          onClick: () => { void runVisionSetup('test') },
-        }, setupBusy === 'test' ? '正在测试…' : '仅测试图片能力'),
-        createElement(Button, {
-          variant: 'outline', disabled: disabled || setupRoute === null || setupBusy !== null,
-          onClick: () => { void runVisionSetup('enable') },
-        }, setupBusy === 'enable' ? '正在保存…' : '强制启用 image'),
-        createElement(Button, {
-          variant: 'primary', disabled: disabled || setupRoute === null || setupBusy !== null,
-          onClick: () => { void runVisionSetup('auto') },
-        }, setupBusy === 'auto' ? '正在自动配置…' : '一键测试并配置')),
-      createElement('p', { className: css.help },
-        '“仅测试”会临时声明 image 并在测试后回滚；“强制启用”不调用 API；“一键测试并配置”只有测试成功才保留声明并设为图片模型。'),
-      setupResponse === null ? null : createElement('div', { className: css.probeResult },
-        createElement('span', { className: css.fieldLabel }, '模型测试回答'),
-        createElement('code', null, setupResponse))),
     createElement('section', { className: css.module },
       createElement('div', { className: css.moduleTitle }, '基础设置'),
       createElement('p', { className: css.help }, '图片模型列表只显示明确声明支持 image 输入的已配置模型。'),
@@ -384,6 +396,50 @@ function VisionMixSettingsView(): ReactNode {
                 setRouting(previous => previous === null ? previous : { ...previous, autoAnalyzeToolImages: event.target.checked })
               },
             }))))),
+    createElement('section', { className: css.module },
+      createElement('div', { className: css.moduleTitle }, '模型图片能力'),
+      createElement('p', { className: css.help },
+        '这里负责检测和声明模型能力，不会替你决定路由。启用 image 后，请回到上方“基础设置”自行选择图片模型。'),
+      createElement(ModelPicker, {
+        label: '待检测模型', route: setupRoute ?? undefined, groups: catalog.groups,
+        disabled: disabled || setupBusy !== null,
+        help: '列表来自“设置 → 模型”。绿色表示文本输入，黄色表示图片输入；测试会发送一张很小的红色图片。',
+        onChange: value => {
+          if (value !== undefined) {
+            setSetupRoute(value)
+            setSetupResult(null)
+          }
+        },
+      }),
+      createElement('div', { className: css.capabilityState },
+        createElement('span', { className: css.fieldLabel }, '当前声明能力'),
+        setupModel === undefined
+          ? createElement('span', { className: css.capabilityUnknown }, '请先选择模型')
+          : createElement(CapabilityBadges, { model: setupModel })),
+      createElement('div', { className: css.setupActions },
+        createElement(Button, {
+          variant: 'outline', disabled: disabled || setupRoute === null || setupBusy !== null,
+          onClick: () => { void runVisionSetup('test') },
+        }, setupBusy === 'test' ? '正在测试…' : '测试图片能力'),
+        createElement(Button, {
+          variant: 'outline', disabled: disabled || setupRoute === null || setupBusy !== null || setupHasImage,
+          onClick: () => { void runVisionSetup('enable') },
+        }, setupBusy === 'enable' ? '正在保存…' : setupHasImage ? '已声明 image' : '强制启用 image'),
+        createElement(Button, {
+          variant: 'primary', disabled: disabled || setupRoute === null || setupBusy !== null,
+          onClick: () => { void runVisionSetup('auto') },
+        }, setupBusy === 'auto' ? '正在测试并启用…' : setupHasImage ? '重新测试图片能力' : '测试并启用 image')),
+      createElement('p', { className: css.help },
+        '“测试图片能力”只验证并回滚临时声明；“强制启用”不调用 API；“测试并启用”仅在真实识图成功后写入 image 能力。'),
+      setupResult === null ? null : createElement('div', { className: css.setupResult, role: 'status' },
+        createElement('div', { className: css.setupResultTitle },
+          setupResult.action === 'test'
+            ? setupResult.imageEnabled ? '图片测试通过 · 已声明 image' : '图片测试通过 · 尚未声明 image'
+            : setupResult.action === 'enable' ? '已强制启用 image' : '图片测试通过 · 已启用 image'),
+        createElement('p', { className: css.setupResultMessage }, setupResult.message),
+        setupResult.response === undefined ? null : createElement('div', { className: css.probeResult },
+          createElement('span', { className: css.fieldLabel }, '模型回答'),
+          createElement('code', null, setupResult.response)))),
     createElement('section', { className: css.module },
       createElement('div', { className: css.moduleTitle }, '图片生成与编辑'),
       createElement('p', { className: css.help },

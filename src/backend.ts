@@ -27,6 +27,6 @@ export class UnconfiguredVisionBackend implements VisionBackend {
   readonly model = 'unconfigured'
 
   async analyze(_request: VisionAnalyzeRequest): Promise<never> {
-    throw new Error('vision-mix: no image model is configured; open Settings → Vision Mix → 识图模型接入')
+    throw new Error('vision-mix: no image model is configured; open Settings → Vision Mix → 基础设置')
   }
 }

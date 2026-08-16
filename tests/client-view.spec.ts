@@ -71,11 +71,16 @@ describe('Vision Mix browser views', () => {
     })
     const { settings: Settings } = registeredViews()
     const view = render(createElement(Settings))
-    const picker = await screen.findByRole('button', { name: 'Chat (deepseek/chat)' })
+    const picker = await screen.findByRole('button', { name: '基础模型：Chat (deepseek/chat)' })
+    const basics = screen.getByText('基础设置')
+    const capabilities = screen.getByText('模型图片能力')
+    expect(basics.compareDocumentPosition(capabilities) & Node.DOCUMENT_POSITION_FOLLOWING).not.toBe(0)
     expect(view.container.querySelector('select')).toBeNull()
     fireEvent.click(picker)
     expect(await screen.findByRole('menu')).toBeTruthy()
     expect(screen.getByText('DeepSeek')).toBeTruthy()
+    expect(document.querySelectorAll('[data-modality="text"]').length).toBeGreaterThan(0)
+    expect(document.querySelectorAll('[data-modality="image"]').length).toBeGreaterThan(0)
   })
 
   it('renders compact call summaries that reveal the image and details on click', async () => {
@@ -107,13 +112,15 @@ describe('Vision Mix browser views', () => {
 
   it('runs automatic vision onboarding and tests a separate image generation Provider', async () => {
     const requests: Array<{ url: string; body?: unknown }> = []
+    let imageEnabled = false
     vi.spyOn(globalThis, 'fetch').mockImplementation(async (input, init) => {
       const url = String(input)
       if (url.endsWith('/vision-mix/vision-setup')) {
         requests.push({ url, body: JSON.parse(String(init?.body)) })
+        imageEnabled = true
         return json({
           action: 'auto', route: { provider: 'relay', model: 'vision' }, imageEnabled: true,
-          selected: true, message: '真实图片测试通过', response: 'red',
+          selected: false, message: '真实图片测试通过，已保存 image 能力。', response: 'red',
         })
       }
       if (url.endsWith('/vision-mix/generation-setup')) {
@@ -135,15 +142,21 @@ describe('Vision Mix browser views', () => {
       return json({
         groups: [{ id: 'relay', name: 'Relay', models: [
           { id: 'chat', name: 'Chat', inputModalities: ['text'] },
-          { id: 'vision', name: 'Vision', inputModalities: ['text'] },
+          { id: 'vision', name: 'Vision', inputModalities: imageEnabled ? ['text', 'image'] : ['text'] },
         ] }],
         generationProviders: [{ id: 'images', name: 'Images Relay' }], failures: [],
       })
     })
     const { settings: Settings } = registeredViews()
     render(createElement(Settings))
-    fireEvent.click(await screen.findByRole('button', { name: '一键测试并配置' }))
-    expect(await screen.findByText('真实图片测试通过')).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: '基础模型：Chat (relay/chat)' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: /Vision/ }))
+    expect(screen.getByRole('button', { name: '基础模型：Vision (relay/vision)' })).toBeTruthy()
+    fireEvent.click(await screen.findByRole('button', { name: '测试并启用 image' }))
+    expect(await screen.findByText('图片测试通过 · 已启用 image')).toBeTruthy()
+    expect(screen.getByText('真实图片测试通过，已保存 image 能力。')).toBeTruthy()
+    expect((screen.getByRole('button', { name: '已声明 image' }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByRole('button', { name: '基础模型：Vision (relay/vision)' })).toBeTruthy()
     expect(requests[0]?.body).toEqual({ action: 'auto', route: { provider: 'relay', model: 'vision' } })
 
     fireEvent.click(screen.getByRole('button', { name: '测试生图 API' }))

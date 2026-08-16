@@ -38,8 +38,8 @@ describe('client settings model', () => {
   it('validates vision and independently routed generation setup results', () => {
     expect(parseVisionSetupPayload({
       action: 'auto', route: { provider: 'relay', model: 'vision' }, imageEnabled: true,
-      selected: true, message: 'ok', response: 'red',
-    })).toMatchObject({ action: 'auto', selected: true, response: 'red' })
+      selected: false, message: 'ok', response: 'red',
+    })).toMatchObject({ action: 'auto', selected: false, response: 'red' })
     expect(parseGenerationSetupPayload({
       route: { provider: 'images', model: 'gpt-image-2' }, message: 'ok',
       mediaType: 'image/png', bytes: 3,
